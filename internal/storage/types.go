@@ -6,12 +6,12 @@ import (
 )
 
 type Node struct {
-	Key           string
-	Value         string
-	Left          *Node
-	Right         *Node
-	Parent        *Node
-	BalanceFactor int
+	Key    string
+	Value  string
+	Left   *Node
+	Right  *Node
+	Parent *Node
+	height int
 }
 
 // If there are 2 equal key, replace the value, we do not allow duplicate key
@@ -22,9 +22,9 @@ type AVLTree struct {
 func (t *AVLTree) Insert(key string, value string) error {
 	if t.Root == nil {
 		t.Root = &Node{
-			Key:           key,
-			Value:         value,
-			BalanceFactor: 0,
+			Key:    key,
+			Value:  value,
+			height: 1,
 		}
 		return nil
 	}
@@ -41,7 +41,6 @@ func (t *AVLTree) Insert(key string, value string) error {
 		}
 		log.Printf("GO TO %v with value %v", node, key)
 		if key < node.Key {
-			node.BalanceFactor -= 1
 			if node.Left != nil {
 				node = node.Left
 			} else {
@@ -51,7 +50,6 @@ func (t *AVLTree) Insert(key string, value string) error {
 			}
 
 		} else {
-			node.BalanceFactor += 1
 			if node.Right != nil {
 				node = node.Right
 			} else {
@@ -64,23 +62,69 @@ func (t *AVLTree) Insert(key string, value string) error {
 	}
 }
 
-func (t *AVLTree) ToPreorderString() string {
-	var stack = make([]*Node, 0)
+func (t *AVLTree) Delete(key string) error {
+	node := t.Root
+	for {
+		if node == nil {
+			return nil
+		}
+		if key == node.Key {
+			if node == t.Root {
+				if node.Left == nil {
+					t.Root = node.Right
+					t.Root.Parent = nil
+					return nil
+				}
+				if node.Right == nil {
+					t.Root = node.Left
+					t.Root.Parent = nil
+					return nil
+				}
 
-	var sb strings.Builder
+			} else {
+				parent := node.Parent
+				if node.Left == nil {
+					if node == parent.Left {
+						parent.setLeft(node.Right)
+					} else {
+						parent.setRight(node.Right)
+					}
+					t.rebalance(parent)
+					return nil
+				}
+				if node.Right == nil {
+					if node == parent.Right {
+						parent.Right = node.Left
+					} else {
+						parent.Left = node.Left
+					}
+					t.rebalance(parent)
+					return nil
+				}
+			}
 
-	stack = append(stack, t.Root)
-	for len(stack) > 0 {
-		top := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
-		if top != nil {
-			sb.WriteString("[" + top.Key + ":" + top.Value + "],")
-			stack = append(stack, top.Right)
-			stack = append(stack, top.Left)
+			candidate := node.Right.leftMostDescendant()
 
+			node.Value = candidate.Value
+			node.Key = candidate.Key
+
+			cp := candidate.Parent
+			log.Printf("Candidate left most of right %v cp %v node %v", candidate, cp, node)
+			if cp == node {
+				node.setRight(candidate.Right)
+			} else {
+				cp.setLeft(candidate.Right)
+
+			}
+			t.rebalance(cp)
+			return nil
+		}
+		if key < node.Key {
+			node = node.Left
+		} else {
+			node = node.Right
 		}
 	}
-	return sb.String()
 }
 
 func (n *Node) ToString() string {
@@ -88,117 +132,179 @@ func (n *Node) ToString() string {
 		return "nil"
 	}
 	var sb strings.Builder
-	sb.WriteString(n.Key + ":" + n.Value + " {" + n.Left.ToString() + "} {" + n.Right.ToString() + "} ")
+	sb.WriteString(n.Key)
+	if n.Parent != nil {
+		sb.WriteString(":" + "{" + n.Parent.Key + "}")
+	} else {
+		sb.WriteString(":ROOT")
+	}
+	sb.WriteString(" {" + n.Left.ToString() + "} {" + n.Right.ToString() + "}")
 	return sb.String()
 }
 
-func (n *Node) height() int {
+func (t *AVLTree) Height() int {
+	return t.Root.Height()
+}
+
+func (n *Node) Height() int {
 	if n == nil {
 		return 0
 	}
-	if n.Left.height() > n.Right.height() {
-		return n.Left.height() + 1
-	}
-	return n.Right.height() + 1
+	return n.height
 }
 
-func (t *AVLTree) Height() int {
-	return t.Root.height()
-}
-
-func (n *Node) resetBalanceFactor() {
+func (n *Node) resetHeight() {
 	if n == nil {
 		return
 	}
-	n.BalanceFactor = n.Right.height() - n.Left.height()
+	left := n.Left.Height()
+	right := n.Right.Height()
+	if left > right {
+		n.height = left + 1
+	} else {
+		n.height = right + 1
+	}
 }
 
 func (t *AVLTree) rebalance(node *Node) {
 	rn := node
 	var child *Node = nil
 	var grandChild *Node = nil
-	for rn != nil && rn.BalanceFactor > -2 && rn.BalanceFactor < 2 {
+	for rn != nil {
+		oldHeight := rn.Height()
+		rn.resetHeight()
+		if oldHeight == rn.Height() || rn.skewLeft() || rn.skewRight() {
+			break
+		}
 		grandChild = child
 		child = rn
 		rn = rn.Parent
 
 	}
+	log.Printf("rebalance %v %v %v", rn, child, grandChild)
 
 	if rn == nil { //we reach root and tree is balance
 		return
 	}
 
-	if rn.BalanceFactor == 2 { //skew right
+	if rn.skewRight() {
 		//child should be rn right
 		if grandChild == child.Right {
 			rn.Left = &Node{Key: rn.Key, Value: rn.Value, Left: rn.Left, Right: child.Left, Parent: rn}
 			if rn.Left.Left != nil {
 				rn.Left.Left.Parent = rn.Left
 			}
-			rn.Left.resetBalanceFactor()
+			rn.Left.resetHeight()
 			rn.Key = child.Key
 			rn.Value = child.Value
-			rn.Right = child.Right
-			rn.Right.Parent = rn
+			rn.setRight((child.Right))
 
 			child.Left = nil
-			rn.resetBalanceFactor()
+			rn.resetHeight()
 
 		} else {
 			rn.Left = &Node{Key: rn.Key, Value: rn.Value, Left: rn.Left, Right: grandChild.Left, Parent: rn}
 			if rn.Left.Left != nil {
 				rn.Left.Left.Parent = rn.Left
 			}
-			rn.Left.resetBalanceFactor()
+			rn.Left.resetHeight()
 			rn.Value = grandChild.Value
 			rn.Key = grandChild.Key
-			child.Left = grandChild.Right
-			child.Left.Parent = child
-			child.resetBalanceFactor()
+			child.setLeft(grandChild.Right)
+			child.resetHeight()
 			grandChild.Left = nil
 			grandChild.Right = nil
-			rn.resetBalanceFactor()
+			rn.resetHeight()
 
 		}
 	}
-
-	if rn.BalanceFactor == -2 { //skew left
+	log.Printf("L %v and R %v", rn.Left.Height(), rn.Right.Height())
+	if rn.skewLeft() {
 		//child should be rn Left
 		if grandChild == child.Left {
 			rn.Right = &Node{Key: rn.Key, Value: rn.Value, Left: child.Right, Right: rn.Right, Parent: rn}
-			if rn.Right.Right != nil {
-				rn.Right.Right.Parent = rn.Right
-			}
+			rn.Right.setRight(rn.Right.Right)
 
-			rn.Right.resetBalanceFactor()
+			rn.Right.resetHeight()
 			rn.Key = child.Key
 			rn.Value = child.Value
-			rn.Left = child.Left
-			rn.Left.Parent = rn
+			rn.setLeft(child.Left)
 
 			child.Right = nil
-			rn.resetBalanceFactor()
+			rn.resetHeight()
 
 		} else {
 			rn.Right = &Node{Key: rn.Key, Value: rn.Value, Left: grandChild.Right, Right: rn.Right, Parent: rn}
 			if rn.Right.Right != nil {
 				rn.Right.Right.Parent = rn.Right
 			}
-			rn.Right.resetBalanceFactor()
+			rn.Right.resetHeight()
 			rn.Value = grandChild.Value
 			rn.Key = grandChild.Key
-			child.Right = grandChild.Left
-			child.Right.Parent = child
-			child.resetBalanceFactor()
+			child.setRight(grandChild.Left)
+			child.resetHeight()
 			grandChild.Left = nil
 			grandChild.Right = nil
-			rn.resetBalanceFactor()
+			rn.resetHeight()
 
 		}
 	}
 	for rn != nil {
-		rn.resetBalanceFactor()
+		rn.resetHeight()
 		rn = rn.Parent
 
 	}
+}
+
+func (n *Node) skewRight() bool {
+	return n.Right.Height()-n.Left.Height() >= 2
+}
+
+func (n *Node) skewLeft() bool {
+	return n.Left.Height()-n.Right.Height() >= 2
+}
+
+func (n *Node) leftMostDescendant() *Node {
+	res := n
+	for res.Left != nil {
+		res = res.Left
+	}
+	return res
+}
+
+func (n *Node) rightMostDescendant() *Node {
+	res := n
+	for res.Right != nil {
+		res = res.Right
+	}
+	return res
+}
+
+func (n *Node) unlinkFromParent() bool {
+	if n == nil {
+		return false
+	}
+
+	if n == n.Parent.Left {
+		n.Parent.Left = nil
+	} else {
+		n.Parent.Right = nil
+	}
+	return true
+}
+
+func (n *Node) setLeft(child *Node) bool {
+	n.Left = child
+	if child != nil {
+		child.Parent = n
+	}
+	return true
+}
+
+func (n *Node) setRight(child *Node) bool {
+	n.Right = child
+	if child != nil {
+		child.Parent = n
+	}
+	return true
 }
