@@ -24,7 +24,7 @@ func TestAVLInsertt(t *testing.T) {
 		tree.Insert(sampleInput[i].key, sampleInput[i].value)
 		log.Println(tree.Root.ToString())
 	}
-
+	log.Println(tree.Inorder())
 }
 
 func TestAVLDelete(t *testing.T) {
@@ -61,4 +61,28 @@ func TestAVLDelete(t *testing.T) {
 	log.Println("DELETE E")
 	tree.Delete("E")
 	log.Println(tree.Root.ToString())
+}
+
+func TestAVLFind(t *testing.T) {
+
+	sampleInput := []struct {
+		key   string
+		value string
+	}{
+		{key: "A", value: "B"},
+		{key: "B", value: "c"},
+		{key: "C", value: "B"},
+		{key: "D", value: "1"},
+		{key: "E", value: "1"},
+		{key: "F", value: "1"},
+	}
+
+	tree := AVLTree{}
+	for i := range sampleInput {
+		tree.Insert(sampleInput[i].key, sampleInput[i].value)
+	}
+	log.Println(tree.Inorder())
+	log.Println(tree.Find("A"))
+	log.Println(tree.Find("F"))
+	log.Println(tree.Find("E"))
 }

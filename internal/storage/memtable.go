@@ -14,12 +14,17 @@ type Node struct {
 	height int
 }
 
+type Memtable interface {
+}
+
 // If there are 2 equal key, replace the value, we do not allow duplicate key
 type AVLTree struct {
 	Root *Node
+	Size int
 }
 
 func (t *AVLTree) Insert(key string, value string) error {
+	t.Size += len(key) + len(value)
 	if t.Root == nil {
 		t.Root = &Node{
 			Key:    key,
@@ -69,6 +74,7 @@ func (t *AVLTree) Delete(key string) error {
 			return nil
 		}
 		if key == node.Key {
+			t.Size -= len(node.Key) + len(node.Value)
 			if node == t.Root {
 				if node.Left == nil {
 					t.Root = node.Right
@@ -125,6 +131,42 @@ func (t *AVLTree) Delete(key string) error {
 			node = node.Right
 		}
 	}
+}
+
+func (t *AVLTree) Find(key string) (string, bool) {
+	node := t.Root
+	for {
+		if node == nil {
+			return "", false
+		}
+		if key < node.Key {
+			node = node.Left
+		} else if key > node.Key {
+			node = node.Right
+		} else {
+			return node.Value, true
+		}
+	}
+}
+
+type Tuple struct {
+	Key   string
+	Value string
+}
+
+func (t *AVLTree) Inorder() []Tuple {
+	return t.Root.Inorder()
+}
+
+func (n *Node) Inorder() []Tuple {
+	if n == nil {
+		return make([]Tuple, 0)
+	}
+	res := make([]Tuple, 0)
+	res = append(res, n.Left.Inorder()...)
+	res = append(res, Tuple{Key: n.Key, Value: n.Value})
+	res = append(res, n.Right.Inorder()...)
+	return res
 }
 
 func (n *Node) ToString() string {
@@ -307,4 +349,8 @@ func (n *Node) setRight(child *Node) bool {
 		child.Parent = n
 	}
 	return true
+}
+
+func (n *Node) Size() int {
+	return len(n.Key) + len(n.Value)
 }
