@@ -7,42 +7,36 @@ import (
 
 func TestAVLInsertt(t *testing.T) {
 
-	sampleInput := []struct {
-		key   string
-		value string
-	}{
-		{key: "A", value: "B"},
-		{key: "B", value: "c"},
-		{key: "C", value: "B"},
-		{key: "D", value: "1"},
-		{key: "E", value: "1"},
-		{key: "F", value: "1"},
+	sampleInput := []Tuple{
+		{Key: "A", Value: "B"},
+		{Key: "B", Value: "c"},
+		{Key: "C", Value: "B"},
+		{Key: "D", Value: "1"},
+		{Key: "E", Value: "1"},
+		{Key: "F", Value: "1"},
 	}
 
 	tree := AVLTree{}
 	for i := range sampleInput {
-		tree.Insert(sampleInput[i].key, sampleInput[i].value)
+		tree.Insert(sampleInput[i].Key, sampleInput[i].Value)
 		log.Println(tree.Root.ToString())
 	}
 	log.Println(tree.Inorder())
 }
 
 func TestAVLDelete(t *testing.T) {
-	sampleInput := []struct {
-		key   string
-		value string
-	}{
-		{key: "A", value: "B"},
-		{key: "B", value: "c"},
-		{key: "C", value: "B"},
-		{key: "D", value: "1"},
-		{key: "E", value: "1"},
-		{key: "F", value: "1"},
+	sampleInput := []Tuple{
+		{Key: "A", Value: "B"},
+		{Key: "B", Value: "c"},
+		{Key: "C", Value: "B"},
+		{Key: "D", Value: "1"},
+		{Key: "E", Value: "1"},
+		{Key: "F", Value: "1"},
 	}
 
 	tree := AVLTree{}
 	for i := range sampleInput {
-		tree.Insert(sampleInput[i].key, sampleInput[i].value)
+		tree.Insert(sampleInput[i].Key, sampleInput[i].Value)
 	}
 
 	log.Println(tree.Root.ToString())
@@ -65,21 +59,18 @@ func TestAVLDelete(t *testing.T) {
 
 func TestAVLFind(t *testing.T) {
 
-	sampleInput := []struct {
-		key   string
-		value string
-	}{
-		{key: "A", value: "B"},
-		{key: "B", value: "c"},
-		{key: "C", value: "B"},
-		{key: "D", value: "1"},
-		{key: "E", value: "1"},
-		{key: "F", value: "1"},
+	sampleInput := []Tuple{
+		{Key: "A", Value: "B"},
+		{Key: "B", Value: "c"},
+		{Key: "C", Value: "B"},
+		{Key: "D", Value: "1"},
+		{Key: "E", Value: "1"},
+		{Key: "F", Value: "1"},
 	}
 
 	tree := AVLTree{}
 	for i := range sampleInput {
-		tree.Insert(sampleInput[i].key, sampleInput[i].value)
+		tree.Insert(sampleInput[i].Key, sampleInput[i].Value)
 	}
 	log.Println(tree.Inorder())
 	log.Println(tree.Find("A"))

@@ -15,16 +15,22 @@ type Node struct {
 }
 
 type Memtable interface {
+	Insert(key string, value string) error
+	Delete(key string) error
+	Find(key string) (string, bool)
+	Clear() error
+	List() []Tuple
+	Size() int
 }
 
 // If there are 2 equal key, replace the value, we do not allow duplicate key
 type AVLTree struct {
 	Root *Node
-	Size int
+	size int
 }
 
 func (t *AVLTree) Insert(key string, value string) error {
-	t.Size += len(key) + len(value)
+	t.size += len(key) + len(value)
 	if t.Root == nil {
 		t.Root = &Node{
 			Key:    key,
@@ -74,7 +80,7 @@ func (t *AVLTree) Delete(key string) error {
 			return nil
 		}
 		if key == node.Key {
-			t.Size -= len(node.Key) + len(node.Value)
+			t.size -= len(node.Key) + len(node.Value)
 			if node == t.Root {
 				if node.Left == nil {
 					t.Root = node.Right
@@ -149,9 +155,23 @@ func (t *AVLTree) Find(key string) (string, bool) {
 	}
 }
 
+func (t *AVLTree) Clear() error {
+	t.Root = nil
+	t.size = 0
+	return nil
+}
+
+func (t *AVLTree) Size() int {
+	return t.size
+}
+
 type Tuple struct {
 	Key   string
 	Value string
+}
+
+func (t *AVLTree) List() []Tuple {
+	return t.Inorder()
 }
 
 func (t *AVLTree) Inorder() []Tuple {
