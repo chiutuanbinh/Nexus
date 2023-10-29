@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"log"
 	"strings"
 )
 
@@ -50,7 +49,6 @@ func (t *AVLTree) Insert(key string, value string) error {
 			node.Value = value
 			return nil
 		}
-		log.Printf("GO TO %v with value %v", node, key)
 		if key < node.Key {
 			if node.Left != nil {
 				node = node.Left
@@ -121,7 +119,6 @@ func (t *AVLTree) Delete(key string) error {
 			node.Key = candidate.Key
 
 			cp := candidate.Parent
-			log.Printf("Candidate left most of right %v cp %v node %v", candidate, cp, node)
 			if cp == node {
 				node.setRight(candidate.Right)
 			} else {
@@ -243,7 +240,6 @@ func (t *AVLTree) rebalance(node *Node) {
 		rn = rn.Parent
 
 	}
-	log.Printf("rebalance %v %v %v", rn, child, grandChild)
 
 	if rn == nil { //we reach root and tree is balance
 		return
@@ -280,7 +276,6 @@ func (t *AVLTree) rebalance(node *Node) {
 
 		}
 	}
-	log.Printf("L %v and R %v", rn.Left.Height(), rn.Right.Height())
 	if rn.skewLeft() {
 		//child should be rn Left
 		if grandChild == child.Left {

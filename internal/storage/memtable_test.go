@@ -3,9 +3,11 @@ package storage
 import (
 	"log"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestAVLInsertt(t *testing.T) {
+func TestAVLInsert(t *testing.T) {
 
 	sampleInput := []Tuple{
 		{Key: "A", Value: "B"},
@@ -35,8 +37,10 @@ func TestAVLDelete(t *testing.T) {
 	}
 
 	tree := AVLTree{}
+	var err error
 	for i := range sampleInput {
-		tree.Insert(sampleInput[i].Key, sampleInput[i].Value)
+		err = tree.Insert(sampleInput[i].Key, sampleInput[i].Value)
+		assert.Nil(t, err)
 	}
 
 	log.Println(tree.Root.ToString())

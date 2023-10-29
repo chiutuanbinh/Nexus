@@ -1,12 +1,14 @@
 package storage
 
 import (
-	"log"
+	"math"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPrintSegment(t *testing.T) {
-	sstable := NewSSTable(&SSTableConfig{Directory: ".", FilePrefix: "A", MemtableMaxSize: 200, ValueSizeMaxBit: 8, KeySizeMaxbit: 8})
+	sstable := NewSSTable(&SSTableConfig{Directory: ".", FilePrefix: "A", MemtableMaxSize: 200})
 	sampleInput := []Tuple{
 		{Key: "A", Value: "B"},
 		{Key: "B", Value: "c"},
@@ -33,8 +35,8 @@ func TestPrintSegment(t *testing.T) {
 
 }
 
-func TestPrintIndex(t *testing.T) {
-	sstable := NewSSTable(&SSTableConfig{Directory: ".", FilePrefix: "A", MemtableMaxSize: 200, ValueSizeMaxBit: 8, KeySizeMaxbit: 8})
+func TestFind(t *testing.T) {
+	sstable := NewSSTable(&SSTableConfig{Directory: ".", FilePrefix: "A", MemtableMaxSize: math.MaxInt32, UseHash: true})
 	sampleInput := []Tuple{
 		{Key: "A", Value: "B"},
 		{Key: "B", Value: "c"},
@@ -53,22 +55,14 @@ func TestPrintIndex(t *testing.T) {
 			panic(err)
 		}
 	}
+	sstable.Flush()
+	var res string
+	var found bool
+	for i := range sampleInput {
+		res, found = sstable.Find(sampleInput[i].Key)
 
-	err := sstable.IndexModel.PrintIndexFile(1)
-	if err != nil {
-		panic(err)
+		assert.True(t, found)
+		assert.Equal(t, sampleInput[i].Value, res)
 	}
 
-}
-func TestFind(t *testing.T) {
-	sstable := NewSSTable(&SSTableConfig{Directory: ".", FilePrefix: "A", KeySizeMaxbit: 8, ValueSizeMaxBit: 8})
-	sstable.SegmentModel.PrintSegment(1)
-	sstable.IndexModel.PrintIndexFile(1)
-	res, found := sstable.Find("A")
-	log.Printf("find result %s", res)
-	log.Println(found)
-
-	res, found = sstable.Find("F")
-	log.Printf("find result %s", res)
-	log.Println(found)
 }

@@ -37,14 +37,14 @@ func (s *SegmentFileModel) PrintSegment(segmentIndex int) error {
 	defer f.Close()
 
 	for {
-		key, err := readNextValue(f, s.Config.KeySizeMaxbit)
+		key, err := readNextValue(f, KEY_SIZE_MAX_BYTE_LENGTH)
 		if err == io.EOF {
 			return nil
 		}
 		if err != nil {
 			return err
 		}
-		value, err := readNextValue(f, s.Config.ValueSizeMaxBit)
+		value, err := readNextValue(f, VALUE_SIZE_MAX_BYTE_LENGTH)
 		if err != nil {
 			return err
 		}
@@ -59,7 +59,6 @@ func readNextValue(f *os.File, sizeBufMaxBit int) (string, error) {
 		return "", err
 	}
 	size := binary.LittleEndian.Uint64(sizeBuf)
-	log.Printf("SIZE %v", size)
 	dataBuf := make([]byte, size)
 	_, err = f.Read(dataBuf)
 	if err == io.EOF {
@@ -75,18 +74,25 @@ func (s *SegmentFileModel) Flush(tuples []Tuple) error {
 	}
 	defer f.Close()
 	for i := range tuples {
-		keySize := make([]byte, s.Config.KeySizeMaxbit)
+		keySize := make([]byte, KEY_SIZE_MAX_BYTE_LENGTH)
+		//TODO: replace the size with configurable value
 		binary.LittleEndian.PutUint64(keySize, uint64(16))
-		valueSize := make([]byte, s.Config.ValueSizeMaxBit)
+		valueSize := make([]byte, VALUE_SIZE_MAX_BYTE_LENGTH)
 		binary.LittleEndian.PutUint64(valueSize, uint64(len(tuples[i].Value)))
 		_, err := f.Write(keySize)
 		if err != nil {
 			return err
 		}
-		keyByteArr, err := hex.DecodeString(tuples[i].Key)
-		if err != nil {
-			return err
+		var keyByteArr []byte
+		if s.Config.UseHash {
+			keyByteArr, err = hex.DecodeString(tuples[i].Key)
+			if err != nil {
+				return err
+			}
+		} else {
+			keyByteArr = []byte(tuples[i].Key)
 		}
+
 		_, err = f.Write(keyByteArr)
 		if err != nil {
 			return err
@@ -114,7 +120,7 @@ func (s *SegmentFileModel) Get(fileIndex int, pos int) (Tuple, error) {
 	if err != nil {
 		panic(err)
 	}
-	keySizeArr := make([]byte, s.Config.KeySizeMaxbit)
+	keySizeArr := make([]byte, KEY_SIZE_MAX_BYTE_LENGTH)
 	_, err = f.Read(keySizeArr)
 	if err != nil {
 		panic(err)
@@ -122,22 +128,19 @@ func (s *SegmentFileModel) Get(fileIndex int, pos int) (Tuple, error) {
 
 	keySize := binary.LittleEndian.Uint64(keySizeArr)
 	keyByteArr := make([]byte, keySize)
-	log.Printf("KEY SIZE %v %v", keySize, s.Config.KeySizeMaxbit)
 	_, err = f.Read(keyByteArr)
 	if err != nil {
 		panic(err)
 	}
 
 	key := hex.EncodeToString(keyByteArr)
-	log.Printf("KEY %v", key)
-	valueSizeArr := make([]byte, s.Config.ValueSizeMaxBit)
+	valueSizeArr := make([]byte, VALUE_SIZE_MAX_BYTE_LENGTH)
 
 	_, err = f.Read(valueSizeArr)
 	if err != nil {
 		panic(err)
 	}
 	valueSize := binary.LittleEndian.Uint64(valueSizeArr)
-	log.Printf("Value size %v", valueSize)
 	valueArr := make([]byte, valueSize)
 	_, err = f.Read(valueArr)
 	if err != nil {
@@ -162,7 +165,13 @@ func (i *IndexFileModel) Flush(tuples []Tuple) error {
 	defer f.Close()
 	nextPos := 0
 	for index := range tuples {
-		keyByteArr, err := hex.DecodeString(tuples[index].Key)
+		var keyByteArr []byte
+		if i.Config.UseHash {
+			keyByteArr, err = hex.DecodeString(tuples[index].Key)
+		} else {
+			keyByteArr = []byte(tuples[index].Key)[:KEY_SIZE_IN_BYTE]
+		}
+
 		if err != nil {
 			return err
 		}
@@ -177,7 +186,7 @@ func (i *IndexFileModel) Flush(tuples []Tuple) error {
 			return err
 		}
 		valueSize := len(tuples[index].Value)
-		nextPos += i.Config.KeySizeMaxbit + i.Config.KeySize + +i.Config.ValueSizeMaxBit + valueSize
+		nextPos += KEY_SIZE_MAX_BYTE_LENGTH + KEY_SIZE_IN_BYTE + VALUE_SIZE_MAX_BYTE_LENGTH + valueSize
 
 	}
 	return nil
@@ -192,14 +201,8 @@ func (i *IndexFileModel) getIndexPath(nextIndex int) string {
 	return fmt.Sprintf("%s/%s_%v.index", i.Config.Directory, i.Config.FilePrefix, nextIndex)
 }
 
-func (i *IndexFileModel) Find(key string) (int, int) {
-	keyHex, err := hex.DecodeString(key)
-	if err != nil {
-		panic(fmt.Sprintf("Key is not hashed %v", key))
-	}
-	// step := i.Config.KeySize + 8
+func (i *IndexFileModel) Find(key []byte) (int, int) {
 	for index := i.LastIndex; index > 0; index-- {
-
 		f, err := os.Open(i.getIndexPath(index))
 		if err != nil {
 			panic(fmt.Sprintf("Index file %v not found", i.getIndexPath(index)))
@@ -207,17 +210,24 @@ func (i *IndexFileModel) Find(key string) (int, int) {
 		defer f.Close()
 
 		for {
-			keyBuf := make([]byte, i.Config.KeySize)
+			keyBuf := make([]byte, KEY_SIZE_IN_BYTE)
 			_, err = f.Read(keyBuf)
+			if err == io.EOF {
+				break
+			}
+			// log.Printf("%v %v", key, keyBuf)
+			if err != nil {
+				panic(err)
+			}
+			posBuf := make([]byte, POSITION_OFFSET_SIZE_IN_BYTE)
+			_, err = f.Read(posBuf)
 			if err == io.EOF {
 				break
 			}
 			if err != nil {
 				panic(err)
 			}
-			posBuf := make([]byte, 8)
-			_, err = f.Read(posBuf)
-			if bytes.Equal(keyHex, keyBuf) {
+			if bytes.Equal(key, keyBuf) {
 				return index, int(binary.LittleEndian.Uint64(posBuf))
 			}
 
@@ -226,7 +236,7 @@ func (i *IndexFileModel) Find(key string) (int, int) {
 	return -1, -1
 }
 
-func (i *IndexFileModel) keyCount(fileSize int) int {
+func (i *IndexFileModel) KeyCount(fileSize int) int {
 	panic("IndexFileModel keyCount not implemented")
 }
 
@@ -238,7 +248,7 @@ func (i *IndexFileModel) PrintIndexFile(index int) error {
 	defer f.Close()
 
 	for {
-		keyBuf := make([]byte, i.Config.KeySize)
+		keyBuf := make([]byte, KEY_SIZE_IN_BYTE)
 		_, err := f.Read(keyBuf)
 		if err == io.EOF {
 			return nil
@@ -262,10 +272,8 @@ type SSTableConfig struct {
 	Directory        string
 	FilePrefix       string
 	SegmentThreshold uint32
-	KeySize          int
-	KeySizeMaxbit    int
-	ValueSizeMaxBit  int
 	MemtableMaxSize  int
+	UseHash          bool
 }
 
 type SSTable struct {
@@ -274,29 +282,61 @@ type SSTable struct {
 	IndexModel   *IndexFileModel
 	Memtable     Memtable
 	Hasher       hashing.Hasher
+	CommitLogger CommitLogger
 }
 
 func NewSSTable(config *SSTableConfig) *SSTable {
 	var hasher hashing.Hasher = &hashing.MD5Hasher{}
-	config.KeySize = hasher.GetHashSize()
+	commitLogFilePath := config.Directory + "/commit.log"
+	commitLogger, err := CreateCommitLog(commitLogFilePath)
+	if err != nil {
+		panic(err)
+	}
 	return &SSTable{
-		Config: config,
+		Config:       config,
+		CommitLogger: commitLogger,
 		SegmentModel: &SegmentFileModel{
 			Config: config,
 		},
 		IndexModel: &IndexFileModel{
 			Config:    config,
-			LastIndex: 1,
+			LastIndex: 0,
 		},
 		Hasher:   hasher,
 		Memtable: &AVLTree{},
 	}
 }
 
+func (s *SSTable) preprocess(v string) ([]byte, error) {
+	if s.Config.UseHash {
+		hashedKey := s.Hasher.Hash(v)
+		keyBytes, err := hex.DecodeString(hashedKey)
+		if err != nil {
+			return nil, err
+		}
+		return keyBytes, nil
+	} else {
+		if len(v) > KEY_SIZE_IN_BYTE {
+			return nil, fmt.Errorf("Key %s larger than max size %v", v, KEY_SIZE_IN_BYTE)
+		}
+		vArr := []byte(v)
+		padding := make([]byte, KEY_SIZE_IN_BYTE-len(vArr))
+		vArr = append(vArr, padding...)
+		return vArr, nil
+	}
+
+}
+
 func (s *SSTable) Insert(key string, value string) error {
-	hashedKey := s.Hasher.Hash(key)
-	log.Println(hashedKey)
-	err := s.Memtable.Insert(string(hashedKey), value)
+	preprocessedKey, err := s.preprocess(key)
+	if err != nil {
+		return err
+	}
+	err = s.CommitLogger.Write(preprocessedKey, []byte(value))
+	if err != nil {
+		return err
+	}
+	err = s.Memtable.Insert(string(preprocessedKey), value)
 	if err != nil {
 		return err
 	}
@@ -308,13 +348,15 @@ func (s *SSTable) Insert(key string, value string) error {
 }
 
 func (s *SSTable) Find(key string) (string, bool) {
-	hashedKey := s.Hasher.Hash(key)
-	v, ok := s.Memtable.Find(hashedKey)
+	preprocessedKey, err := s.preprocess(key)
+	if err != nil {
+		return "", false
+	}
+	v, ok := s.Memtable.Find(string(preprocessedKey))
 	if ok {
 		return v, true
 	}
-	fileIndex, pos := s.IndexModel.Find(hashedKey)
-	log.Printf("%v %v %X\n", hashedKey, fileIndex, pos)
+	fileIndex, pos := s.IndexModel.Find(preprocessedKey)
 	if fileIndex == -1 && pos == -1 {
 		return "", false
 	}
@@ -337,8 +379,4 @@ func (s *SSTable) Flush() error {
 	}
 	err = s.Memtable.Clear()
 	return err
-}
-
-func (s *SSTable) Cleanup() {
-	// TODO: handle clean up on sigint or sigterm
 }

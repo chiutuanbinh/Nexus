@@ -6,7 +6,7 @@ import (
 	nexus "nexus/internal"
 	"nexus/internal/crawler"
 
-	pb "nexus/proto-gen/nexus"
+	pb "nexus/internal/interface"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
