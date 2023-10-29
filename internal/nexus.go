@@ -3,7 +3,7 @@ package internal
 import (
 	"context"
 
-	pb "nexus/proto-gen/nexus"
+	pb "nexus/internal/interface"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -21,11 +21,11 @@ func (s *NexusServer) Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, err
 	return &emptypb.Empty{}, nil
 }
 
-func (s *NexusServer) Put(ctx context.Context, putRequest *pb.PutRequest) (*pb.PutReponse, error) {
+func (s *NexusServer) Put(ctx context.Context, putRequest *pb.PutRequest) (*pb.PutResponse, error) {
 	s.storage[putRequest.Key] = putRequest.Value
-	return &pb.PutReponse{Err: 0}, nil
+	return &pb.PutResponse{Err: 0}, nil
 }
 
-func (s *NexusServer) Get(ctx context.Context, getRequest *pb.GetRequest) (*pb.GetReponse, error) {
-	return &pb.GetReponse{Err: 0, Key: getRequest.Key, Value: s.storage[getRequest.Key]}, nil
+func (s *NexusServer) Get(ctx context.Context, getRequest *pb.GetRequest) (*pb.GetResponse, error) {
+	return &pb.GetResponse{Err: 0, Key: getRequest.Key, Value: s.storage[getRequest.Key]}, nil
 }

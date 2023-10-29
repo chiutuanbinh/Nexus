@@ -1,0 +1,28 @@
+syntax = "proto3";
+option go_package = "nexus/internal/interface";
+
+package nexus;
+
+service Nexus {
+    rpc Get(GetRequest) returns (GetResponse) {}
+    rpc Put(PutRequest) returns (PutResponse) {}
+}
+
+message GetRequest {
+    string key = 1;
+}
+
+message GetResponse {
+    int32 err = 1;
+    string key = 2;
+    string value = 3;
+}
+
+message PutRequest {
+    string key = 1;
+    string value = 2;
+}
+
+message PutResponse {
+    int32 err = 1;
+}

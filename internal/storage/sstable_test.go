@@ -67,4 +67,8 @@ func TestFind(t *testing.T) {
 	res, found := sstable.Find("A")
 	log.Printf("find result %s", res)
 	log.Println(found)
+
+	res, found = sstable.Find("F")
+	log.Printf("find result %s", res)
+	log.Println(found)
 }

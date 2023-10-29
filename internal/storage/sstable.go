@@ -26,7 +26,7 @@ func (s *SegmentFileModel) getNextSegmentPath() string {
 }
 
 func (s *SegmentFileModel) getSegmentPath(segmentIndex int) string {
-	return fmt.Sprintf("%s/%s_seg_%v", s.Config.Directory, s.Config.FilePrefix, segmentIndex)
+	return fmt.Sprintf("%s/%s_%v.seg", s.Config.Directory, s.Config.FilePrefix, segmentIndex)
 }
 
 func (s *SegmentFileModel) PrintSegment(segmentIndex int) error {
@@ -189,7 +189,7 @@ func (i *IndexFileModel) getNextIndexPath() string {
 }
 
 func (i *IndexFileModel) getIndexPath(nextIndex int) string {
-	return fmt.Sprintf("%s/%s_index_%v", i.Config.Directory, i.Config.FilePrefix, nextIndex)
+	return fmt.Sprintf("%s/%s_%v.index", i.Config.Directory, i.Config.FilePrefix, nextIndex)
 }
 
 func (i *IndexFileModel) Find(key string) (int, int) {
@@ -302,17 +302,7 @@ func (s *SSTable) Insert(key string, value string) error {
 	}
 	if s.Memtable.Size() >= s.Config.MemtableMaxSize {
 		//TODO: Make this run on separated routine
-		tuples := s.Memtable.List()
-		err = s.IndexModel.Flush(tuples)
-		if err != nil {
-			return err
-		}
-		err = s.SegmentModel.Flush(tuples)
-		if err != nil {
-			return err
-		}
-		err = s.Memtable.Clear()
-		return err
+		return s.Flush()
 	}
 	return nil
 }
@@ -333,4 +323,22 @@ func (s *SSTable) Find(key string) (string, bool) {
 		panic(err)
 	}
 	return t.Value, true
+}
+
+func (s *SSTable) Flush() error {
+	tuples := s.Memtable.List()
+	err := s.IndexModel.Flush(tuples)
+	if err != nil {
+		return err
+	}
+	err = s.SegmentModel.Flush(tuples)
+	if err != nil {
+		return err
+	}
+	err = s.Memtable.Clear()
+	return err
+}
+
+func (s *SSTable) Cleanup() {
+	// TODO: handle clean up on sigint or sigterm
 }
