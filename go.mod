@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	golang.org/x/net v0.8.0
-	google.golang.org/grpc v1.54.0
+	google.golang.org/grpc v1.56.3
 	google.golang.org/protobuf v1.30.0
 )
 
