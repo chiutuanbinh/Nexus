@@ -52,14 +52,14 @@ func (c *SimpleCommitLogger) Write(key []byte, value []byte) error {
 }
 
 func (c *SimpleCommitLogger) Load(readFunc func([]byte, []byte) error) error {
-	f, err := os.Open(c.commitFileName)
+	f, err := os.OpenFile(c.commitFileName, os.O_RDONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 	for {
 
-		keySizeBuf := make([]byte, 8)
+		keySizeBuf := make([]byte, KEY_SIZE_MAX_BYTE_LENGTH)
 		_, err := f.Read(keySizeBuf)
 		if err == io.EOF {
 			return nil

@@ -11,17 +11,12 @@ import (
 
 type NexusServer struct {
 	pb.UnimplementedNexusServer
-	storage *storage.SSTable
+	storage      *storage.SSTable
+	commitLogger storage.CommitLogger
 }
 
-func CreateNexus() *NexusServer {
-	return &NexusServer{storage: storage.NewSSTable(&storage.SSTableConfig{
-		Directory:        "data",
-		FilePrefix:       "Nexus",
-		SegmentThreshold: 4 * 1024 * 1024,
-		MemtableMaxSize:  1024 * 1024,
-		UseHash:          true,
-	})}
+func CreateNexus(sstable *storage.SSTable, commitLogger storage.CommitLogger) *NexusServer {
+	return &NexusServer{storage: sstable, commitLogger: commitLogger}
 }
 
 func (s *NexusServer) Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
@@ -29,7 +24,11 @@ func (s *NexusServer) Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, err
 }
 
 func (s *NexusServer) Put(ctx context.Context, putRequest *pb.PutRequest) (*pb.PutResponse, error) {
-	err := s.storage.Insert(putRequest.Key, putRequest.Value)
+	err := s.commitLogger.Write([]byte(putRequest.GetKey()), []byte(putRequest.GetValue()))
+	if err != nil {
+		return nil, err
+	}
+	err = s.storage.Insert(putRequest.Key, putRequest.Value)
 	if err != nil {
 		return nil, err
 	}

@@ -277,39 +277,37 @@ type SSTableConfig struct {
 }
 
 type SSTable struct {
-	Config       *SSTableConfig
-	SegmentModel *SegmentFileModel
-	IndexModel   *IndexFileModel
-	Memtable     Memtable
-	Hasher       hashing.Hasher
-	CommitLogger CommitLogger
+	Config        *SSTableConfig
+	segmentModel  *SegmentFileModel
+	indexModel    *IndexFileModel
+	memtable      Memtable
+	hasher        hashing.Hasher
+	flushCallBack func() error
 }
 
-func NewSSTable(config *SSTableConfig) *SSTable {
+func NewSSTable(config *SSTableConfig, flushCallBack func() error) *SSTable {
 	var hasher hashing.Hasher = &hashing.MD5Hasher{}
-	commitLogFilePath := config.Directory + "/commit.log"
-	commitLogger, err := CreateCommitLog(commitLogFilePath)
-	if err != nil {
-		panic(err)
-	}
-	return &SSTable{
-		Config:       config,
-		CommitLogger: commitLogger,
-		SegmentModel: &SegmentFileModel{
+
+	sstable := &SSTable{
+		Config: config,
+		segmentModel: &SegmentFileModel{
 			Config: config,
 		},
-		IndexModel: &IndexFileModel{
+		indexModel: &IndexFileModel{
 			Config:    config,
 			LastIndex: 0,
 		},
-		Hasher:   hasher,
-		Memtable: &AVLTree{},
+		hasher:        hasher,
+		memtable:      &AVLTree{},
+		flushCallBack: flushCallBack,
 	}
+
+	return sstable
 }
 
 func (s *SSTable) preprocess(v string) ([]byte, error) {
 	if s.Config.UseHash {
-		hashedKey := s.Hasher.Hash(v)
+		hashedKey := s.hasher.Hash(v)
 		keyBytes, err := hex.DecodeString(hashedKey)
 		if err != nil {
 			return nil, err
@@ -332,15 +330,11 @@ func (s *SSTable) Insert(key string, value string) error {
 	if err != nil {
 		return err
 	}
-	err = s.CommitLogger.Write(preprocessedKey, []byte(value))
+	err = s.memtable.Insert(string(preprocessedKey), value)
 	if err != nil {
 		return err
 	}
-	err = s.Memtable.Insert(string(preprocessedKey), value)
-	if err != nil {
-		return err
-	}
-	if s.Memtable.Size() >= s.Config.MemtableMaxSize {
+	if s.memtable.Size() >= s.Config.MemtableMaxSize {
 		//TODO: Make this run on separated routine
 		return s.Flush()
 	}
@@ -352,15 +346,15 @@ func (s *SSTable) Find(key string) (string, bool) {
 	if err != nil {
 		return "", false
 	}
-	v, ok := s.Memtable.Find(string(preprocessedKey))
+	v, ok := s.memtable.Find(string(preprocessedKey))
 	if ok {
 		return v, true
 	}
-	fileIndex, pos := s.IndexModel.Find(preprocessedKey)
+	fileIndex, pos := s.indexModel.Find(preprocessedKey)
 	if fileIndex == -1 && pos == -1 {
 		return "", false
 	}
-	t, err := s.SegmentModel.Get(fileIndex, pos)
+	t, err := s.segmentModel.Get(fileIndex, pos)
 	if err != nil {
 		panic(err)
 	}
@@ -368,15 +362,20 @@ func (s *SSTable) Find(key string) (string, bool) {
 }
 
 func (s *SSTable) Flush() error {
-	tuples := s.Memtable.List()
-	err := s.IndexModel.Flush(tuples)
+	tuples := s.memtable.List()
+	err := s.indexModel.Flush(tuples)
 	if err != nil {
 		return err
 	}
-	err = s.SegmentModel.Flush(tuples)
+	err = s.segmentModel.Flush(tuples)
 	if err != nil {
 		return err
 	}
-	err = s.Memtable.Clear()
+
+	err = s.memtable.Clear()
+	if err != nil {
+		return err
+	}
+	err = s.flushCallBack()
 	return err
 }

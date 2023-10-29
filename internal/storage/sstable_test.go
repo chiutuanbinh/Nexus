@@ -8,7 +8,7 @@ import (
 )
 
 func TestPrintSegment(t *testing.T) {
-	sstable := NewSSTable(&SSTableConfig{Directory: ".", FilePrefix: "A", MemtableMaxSize: 200})
+	sstable := NewSSTable(&SSTableConfig{Directory: ".", FilePrefix: "A", MemtableMaxSize: 200}, func() error { return nil })
 	sampleInput := []Tuple{
 		{Key: "A", Value: "B"},
 		{Key: "B", Value: "c"},
@@ -28,7 +28,7 @@ func TestPrintSegment(t *testing.T) {
 		}
 	}
 
-	err := sstable.SegmentModel.PrintSegment(1)
+	err := sstable.segmentModel.PrintSegment(1)
 	if err != nil {
 		panic(err)
 	}
@@ -36,7 +36,7 @@ func TestPrintSegment(t *testing.T) {
 }
 
 func TestFind(t *testing.T) {
-	sstable := NewSSTable(&SSTableConfig{Directory: ".", FilePrefix: "A", MemtableMaxSize: math.MaxInt32, UseHash: true})
+	sstable := NewSSTable(&SSTableConfig{Directory: ".", FilePrefix: "A", MemtableMaxSize: math.MaxInt32, UseHash: true}, func() error { return nil })
 	sampleInput := []Tuple{
 		{Key: "A", Value: "B"},
 		{Key: "B", Value: "c"},

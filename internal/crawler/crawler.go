@@ -1,7 +1,7 @@
 package crawler
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 
@@ -33,6 +33,6 @@ func (crawler Crawler) fetch() {
 func Foo() {
 	res, _ := http.Get("https://vnexpress.net/")
 
-	data, _ := ioutil.ReadAll(res.Body)
+	data, _ := io.ReadAll(res.Body)
 	log.Printf("%s", data)
 }
