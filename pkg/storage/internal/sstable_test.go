@@ -1,9 +1,12 @@
 package storage
 
 import (
+	"fmt"
 	"math"
+
 	"testing"
 
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -51,11 +54,10 @@ func TestFind(t *testing.T) {
 	}
 	for i := range sampleInput {
 		err := sstable.Insert(sampleInput[i].Key, sampleInput[i].Value)
-		if err != nil {
-			panic(err)
-		}
+		assert.Nil(t, err)
 	}
-	sstable.Flush()
+	err := sstable.Flush()
+	assert.Nil(t, err)
 	var res string
 	var found bool
 	for i := range sampleInput {
@@ -65,4 +67,13 @@ func TestFind(t *testing.T) {
 		assert.Equal(t, sampleInput[i].Value, res)
 	}
 
+	err = sstable.Delete("A")
+	assert.Nil(t, err)
+	log.Debug().Msg(fmt.Sprintf("%v", sstable.memtable.List()))
+	err = sstable.Flush()
+	assert.Nil(t, err)
+	res, found = sstable.Find("A")
+
+	assert.False(t, found)
+	assert.Empty(t, res)
 }

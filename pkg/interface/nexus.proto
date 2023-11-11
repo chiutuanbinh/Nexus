@@ -1,11 +1,15 @@
 syntax = "proto3";
-option go_package = "nexus/internal/interface";
+option go_package = "nexus/pkg/internal/interface";
 
 package nexus;
 
 service Nexus {
     rpc Get(GetRequest) returns (GetResponse) {}
     rpc Put(PutRequest) returns (PutResponse) {}
+    rpc Delete(DeleteRequest) returns (DeleteResponse) {}
+
+    //Management
+    rpc Flush(FlushRequest) returns (FlushResponse) {}
 }
 
 message GetRequest {
@@ -24,5 +28,21 @@ message PutRequest {
 }
 
 message PutResponse {
+    int32 err = 1;
+}
+
+message DeleteRequest {
+    string key = 1;
+}
+
+message DeleteResponse {
+    int32 err = 1;
+}
+
+message FlushRequest {
+
+}
+
+message FlushResponse {
     int32 err = 1;
 }

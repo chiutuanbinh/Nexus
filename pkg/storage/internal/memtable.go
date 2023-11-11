@@ -2,6 +2,8 @@ package storage
 
 import (
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 type Node struct {
@@ -15,7 +17,7 @@ type Node struct {
 
 type Memtable interface {
 	Insert(key string, value string) error
-	Delete(key string) error
+	Delete(key string) (bool, error)
 	Find(key string) (string, bool)
 	Clear() error
 	List() []Tuple
@@ -71,11 +73,11 @@ func (t *AVLTree) Insert(key string, value string) error {
 	}
 }
 
-func (t *AVLTree) Delete(key string) error {
+func (t *AVLTree) Delete(key string) (bool, error) {
 	node := t.Root
 	for {
 		if node == nil {
-			return nil
+			return false, nil
 		}
 		if key == node.Key {
 			t.size -= len(node.Key) + len(node.Value)
@@ -83,12 +85,12 @@ func (t *AVLTree) Delete(key string) error {
 				if node.Left == nil {
 					t.Root = node.Right
 					t.Root.Parent = nil
-					return nil
+					return true, nil
 				}
 				if node.Right == nil {
 					t.Root = node.Left
 					t.Root.Parent = nil
-					return nil
+					return true, nil
 				}
 
 			} else {
@@ -100,7 +102,7 @@ func (t *AVLTree) Delete(key string) error {
 						parent.setRight(node.Right)
 					}
 					t.rebalance(parent)
-					return nil
+					return true, nil
 				}
 				if node.Right == nil {
 					if node == parent.Right {
@@ -109,7 +111,7 @@ func (t *AVLTree) Delete(key string) error {
 						parent.Left = node.Left
 					}
 					t.rebalance(parent)
-					return nil
+					return true, nil
 				}
 			}
 
@@ -126,7 +128,7 @@ func (t *AVLTree) Delete(key string) error {
 
 			}
 			t.rebalance(cp)
-			return nil
+			return true, nil
 		}
 		if key < node.Key {
 			node = node.Left
@@ -153,6 +155,7 @@ func (t *AVLTree) Find(key string) (string, bool) {
 }
 
 func (t *AVLTree) Clear() error {
+	log.Debug().Msg("AVL clear")
 	t.Root = nil
 	t.size = 0
 	return nil
