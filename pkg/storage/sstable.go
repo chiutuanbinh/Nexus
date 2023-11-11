@@ -4,11 +4,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"nexus/pkg/hashing"
+	"os"
 
 	"github.com/rs/zerolog/log"
 )
 
-// TODO: make these config available when reading any segment file
 type SSTableConfig struct {
 	Directory        string
 	FilePrefix       string
@@ -28,7 +28,13 @@ type SSTable struct {
 
 func NewSSTable(config *SSTableConfig, flushCallBack func() error) *SSTable {
 	var hasher hashing.Hasher = &hashing.MD5Hasher{}
-
+	d, err := os.ReadDir(config.Directory)
+	if err != nil {
+		panic(err)
+	}
+	for _, entry := range d {
+		entry.Name()
+	}
 	sstable := &SSTable{
 		Config: config,
 		segmentModel: &SegmentFileModel{

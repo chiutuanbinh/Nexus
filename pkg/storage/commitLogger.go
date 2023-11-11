@@ -77,7 +77,7 @@ func (c *SimpleCommitLogger) Load(readFunc func([]byte, []byte) error) error {
 			return err
 		}
 
-		valueSizeBuf := make([]byte, 8)
+		valueSizeBuf := make([]byte, VALUE_SIZE_MAX_BYTE_LENGTH)
 		_, err = f.Read(valueSizeBuf)
 		if err == io.EOF {
 			return nil

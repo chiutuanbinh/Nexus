@@ -1,7 +1,6 @@
 package storage
 
 import (
-	storage "nexus/pkg/storage/internal"
 	"os"
 )
 
@@ -12,12 +11,20 @@ type Storage interface {
 	Flush() error
 }
 type storageImplementation struct {
-	commitLogger storage.CommitLogger
-	sstable      *storage.SSTable
+	commitLogger CommitLogger
+	sstable      *SSTable
+}
+
+type StorageConfig struct {
+	SSTableConfig
 }
 
 // Delete implements Storage.
 func (s *storageImplementation) Delete(key string) error {
+	err := s.commitLogger.Write([]byte(key), []byte(TOMBSTONE))
+	if err != nil {
+		return err
+	}
 	return s.sstable.Delete(key)
 }
 
@@ -41,25 +48,19 @@ func (s *storageImplementation) Put(key string, value string) error {
 	return err
 }
 
-func CreateStorage() Storage {
+func CreateStorage(config *StorageConfig) Storage {
 	curDir, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
 	dataDirectory := curDir + "/data"
 	commitLogFilePath := dataDirectory + "/commit.log"
-	commitLogger, err := storage.CreateCommitLog(commitLogFilePath)
+	commitLogger, err := CreateCommitLog(commitLogFilePath)
 	if err != nil {
 		panic(err)
 	}
 
-	sstable := storage.NewSSTable(&storage.SSTableConfig{
-		Directory:        curDir + "/data",
-		FilePrefix:       "Nexus",
-		SegmentThreshold: 4 * 1024 * 1024,
-		MemtableMaxSize:  1024 * 1024,
-		UseHash:          true,
-	}, commitLogger.Clear)
+	sstable := NewSSTable(&config.SSTableConfig, commitLogger.Clear)
 	commitlogConsumer := func(key []byte, value []byte) error {
 		return sstable.Insert(string(key), string(value))
 	}

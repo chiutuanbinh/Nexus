@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	nexus "nexus/pkg/server"
+	"os"
 
 	pb "nexus/pkg/interface"
 	"nexus/pkg/storage"
@@ -16,8 +17,21 @@ import (
 
 func runServer() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	grpcServer := grpc.NewServer()
-	storageImpl := storage.CreateStorage()
+	curDir, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+
+	storageImpl := storage.CreateStorage(&storage.StorageConfig{
+		SSTableConfig: storage.SSTableConfig{
+			Directory:        curDir + "/data",
+			FilePrefix:       "Nexus",
+			SegmentThreshold: 4 * 1024 * 1024,
+			MemtableMaxSize:  1024 * 1024,
+			UseHash:          true,
+		}})
 	server := nexus.CreateNexus(storageImpl)
 	pb.RegisterNexusServer(grpcServer, server)
 	reflection.Register(grpcServer)
