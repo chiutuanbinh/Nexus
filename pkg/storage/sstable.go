@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"nexus/pkg/hashing"
 	"os"
+	"time"
 
 	"github.com/rs/zerolog/log"
 )
@@ -82,7 +83,9 @@ func (s *SSTable) Insert(key string, value string) error {
 	if err != nil {
 		return err
 	}
+
 	err = s.memtable.Insert(string(preprocessedKey), value)
+	log.Debug().Msgf("Insert key %v processed %v table size %v bytesize %v", key, string(preprocessedKey), len(s.memtable.List()), s.memtable.Size())
 	if err != nil {
 		return err
 	}
@@ -98,34 +101,41 @@ func (s *SSTable) Delete(key string) error {
 }
 
 func (s *SSTable) Find(key string) (string, bool) {
+	var cost = time.Now().UnixMilli()
 	preprocessedKey, err := s.preprocess(key)
 	if err != nil {
 		return "", false
 	}
+
+	s1 := time.Now().UnixMilli() - cost
 	v, ok := s.memtable.Find(string(preprocessedKey))
+	// log.Debug().Msgf("Find key %v processed %v value %v", key, string(preprocessedKey), v)
 	if ok {
 		if v == TOMBSTONE {
 			return "", false
 		}
 		return v, true
 	}
+	s2 := time.Now().UnixMilli() - cost
 	fileIndex, pos := s.indexModel.Find(preprocessedKey)
 	if fileIndex == -1 && pos == -1 {
 		return "", false
 	}
+	s3 := time.Now().UnixMilli() - cost
 	t, err := s.segmentModel.Get(fileIndex, pos)
 	if err != nil {
 		panic(err)
 	}
+	s4 := time.Now().UnixMilli() - cost
 	if t.Value == TOMBSTONE {
 		return "", false
 	}
+	log.Debug().Msgf("Cost of finding a value: preprocess %v mem %v index %v seg %v", s1, s2, s3, s4)
 	return t.Value, true
 }
 
 func (s *SSTable) Flush() error {
 	tuples := s.memtable.List()
-	log.Debug().Msg(fmt.Sprintf("%v", tuples))
 	err := s.indexModel.Flush(tuples)
 	if err != nil {
 		return fmt.Errorf("Index file flush failed %w", err)

@@ -1,9 +1,5 @@
 package storage
 
-import (
-	"os"
-)
-
 type Storage interface {
 	Put(key string, value string) error
 	Get(key string) (string, bool)
@@ -49,12 +45,7 @@ func (s *storageImplementation) Put(key string, value string) error {
 }
 
 func CreateStorage(config *StorageConfig) Storage {
-	curDir, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-	dataDirectory := curDir + "/data"
-	commitLogFilePath := dataDirectory + "/commit.log"
+	commitLogFilePath := config.Directory + "/commit.log"
 	commitLogger, err := CreateCommitLog(commitLogFilePath)
 	if err != nil {
 		panic(err)

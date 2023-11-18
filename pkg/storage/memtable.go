@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"math"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -12,7 +13,6 @@ type Node struct {
 	Left   *Node
 	Right  *Node
 	Parent *Node
-	height int
 }
 
 type Memtable interface {
@@ -34,9 +34,8 @@ func (t *AVLTree) Insert(key string, value string) error {
 	t.size += len(key) + len(value)
 	if t.Root == nil {
 		t.Root = &Node{
-			Key:    key,
-			Value:  value,
-			height: 1,
+			Key:   key,
+			Value: value,
 		}
 		return nil
 	}
@@ -212,30 +211,18 @@ func (n *Node) Height() int {
 	if n == nil {
 		return 0
 	}
-	return n.height
-}
-
-func (n *Node) resetHeight() {
-	if n == nil {
-		return
-	}
-	left := n.Left.Height()
-	right := n.Right.Height()
-	if left > right {
-		n.height = left + 1
-	} else {
-		n.height = right + 1
-	}
+	return 1 + int(math.Max(float64(n.Left.Height()), float64(n.Right.Height())))
 }
 
 func (t *AVLTree) rebalance(node *Node) {
 	rn := node
 	var child *Node = nil
 	var grandChild *Node = nil
+	var skewLeft, skewRight bool
 	for rn != nil {
-		oldHeight := rn.Height()
-		rn.resetHeight()
-		if oldHeight == rn.Height() || rn.skewLeft() || rn.skewRight() {
+		skewLeft = rn.skewLeft()
+		skewRight = rn.skewRight()
+		if skewLeft || skewRight {
 			break
 		}
 		grandChild = child
@@ -248,71 +235,75 @@ func (t *AVLTree) rebalance(node *Node) {
 		return
 	}
 
-	if rn.skewRight() {
+	if skewRight {
 		//child should be rn right
 		if grandChild == child.Right {
 			rn.Left = &Node{Key: rn.Key, Value: rn.Value, Left: rn.Left, Right: child.Left, Parent: rn}
+			if child.Left != nil {
+				child.Left.Parent = rn.Left
+			}
 			if rn.Left.Left != nil {
 				rn.Left.Left.Parent = rn.Left
 			}
-			rn.Left.resetHeight()
+
 			rn.Key = child.Key
 			rn.Value = child.Value
 			rn.setRight((child.Right))
 
 			child.Left = nil
-			rn.resetHeight()
 
 		} else {
 			rn.Left = &Node{Key: rn.Key, Value: rn.Value, Left: rn.Left, Right: grandChild.Left, Parent: rn}
+			if grandChild.Left != nil {
+				grandChild.Left.Parent = rn.Left
+			}
 			if rn.Left.Left != nil {
 				rn.Left.Left.Parent = rn.Left
 			}
-			rn.Left.resetHeight()
+
 			rn.Value = grandChild.Value
 			rn.Key = grandChild.Key
 			child.setLeft(grandChild.Right)
-			child.resetHeight()
+
 			grandChild.Left = nil
 			grandChild.Right = nil
-			rn.resetHeight()
 
 		}
-	}
-	if rn.skewLeft() {
+	} else if skewLeft {
 		//child should be rn Left
 		if grandChild == child.Left {
 			rn.Right = &Node{Key: rn.Key, Value: rn.Value, Left: child.Right, Right: rn.Right, Parent: rn}
+			if child.Right != nil {
+				child.Right.Parent = rn.Right
+			}
+			if rn.Right.Right != nil {
+				rn.Right.Right.Parent = rn.Right
+			}
 			rn.Right.setRight(rn.Right.Right)
 
-			rn.Right.resetHeight()
 			rn.Key = child.Key
 			rn.Value = child.Value
 			rn.setLeft(child.Left)
 
 			child.Right = nil
-			rn.resetHeight()
 
 		} else {
 			rn.Right = &Node{Key: rn.Key, Value: rn.Value, Left: grandChild.Right, Right: rn.Right, Parent: rn}
+			if grandChild.Right != nil {
+				grandChild.Right.Parent = rn.Right
+			}
 			if rn.Right.Right != nil {
 				rn.Right.Right.Parent = rn.Right
 			}
-			rn.Right.resetHeight()
+
 			rn.Value = grandChild.Value
 			rn.Key = grandChild.Key
 			child.setRight(grandChild.Left)
-			child.resetHeight()
+
 			grandChild.Left = nil
 			grandChild.Right = nil
-			rn.resetHeight()
 
 		}
-	}
-	for rn != nil {
-		rn.resetHeight()
-		rn = rn.Parent
-
 	}
 }
 
@@ -330,27 +321,6 @@ func (n *Node) leftMostDescendant() *Node {
 		res = res.Left
 	}
 	return res
-}
-
-func (n *Node) rightMostDescendant() *Node {
-	res := n
-	for res.Right != nil {
-		res = res.Right
-	}
-	return res
-}
-
-func (n *Node) unlinkFromParent() bool {
-	if n == nil {
-		return false
-	}
-
-	if n == n.Parent.Left {
-		n.Parent.Left = nil
-	} else {
-		n.Parent.Right = nil
-	}
-	return true
 }
 
 func (n *Node) setLeft(child *Node) bool {
