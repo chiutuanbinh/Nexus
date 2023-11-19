@@ -4,10 +4,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"nexus/pkg/hashing"
-	"os"
-	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 type SSTableConfig struct {
@@ -29,28 +25,21 @@ type SSTable struct {
 
 func NewSSTable(config *SSTableConfig, flushCallBack func() error) *SSTable {
 	var hasher hashing.Hasher = &hashing.MD5Hasher{}
-	d, err := os.ReadDir(config.Directory)
-	if err != nil {
-		panic(err)
-	}
-	for _, entry := range d {
-		entry.Name()
-	}
+
 	sstable := &SSTable{
 		Config: config,
-		segmentModel: &SegmentFileModel{
-			Config: &SegmentFileModelConfig{
+		segmentModel: CreateSegmentFileModel(
+			&SegmentFileModelConfig{
 				Directory:  config.Directory,
 				FilePrefix: config.FilePrefix,
 			},
-		},
-		indexModel: &IndexFileModel{
-			Config: &IndexFileModelConfig{
+		),
+		indexModel: CreateIndexFileModel(
+			&IndexFileModelConfig{
 				Directory:  config.Directory,
 				FilePrefix: config.FilePrefix,
 			},
-			LastIndex: 0,
-		},
+		),
 		hasher:        hasher,
 		memtable:      &AVLTree{},
 		flushCallBack: flushCallBack,
@@ -83,9 +72,7 @@ func (s *SSTable) Insert(key string, value string) error {
 	if err != nil {
 		return err
 	}
-
 	err = s.memtable.Insert(string(preprocessedKey), value)
-	log.Debug().Msgf("Insert key %v processed %v table size %v bytesize %v", key, string(preprocessedKey), len(s.memtable.List()), s.memtable.Size())
 	if err != nil {
 		return err
 	}
@@ -101,13 +88,13 @@ func (s *SSTable) Delete(key string) error {
 }
 
 func (s *SSTable) Find(key string) (string, bool) {
-	var cost = time.Now().UnixMilli()
+	// var cost = time.Now().UnixMilli()
 	preprocessedKey, err := s.preprocess(key)
 	if err != nil {
 		return "", false
 	}
 
-	s1 := time.Now().UnixMilli() - cost
+	// s1 := time.Now().UnixMilli() - cost
 	v, ok := s.memtable.Find(string(preprocessedKey))
 	// log.Debug().Msgf("Find key %v processed %v value %v", key, string(preprocessedKey), v)
 	if ok {
@@ -116,21 +103,21 @@ func (s *SSTable) Find(key string) (string, bool) {
 		}
 		return v, true
 	}
-	s2 := time.Now().UnixMilli() - cost
+	// s2 := time.Now().UnixMilli() - cost
 	fileIndex, pos := s.indexModel.Find(preprocessedKey)
 	if fileIndex == -1 && pos == -1 {
 		return "", false
 	}
-	s3 := time.Now().UnixMilli() - cost
+	// s3 := time.Now().UnixMilli() - cost
 	t, err := s.segmentModel.Get(fileIndex, pos)
 	if err != nil {
 		panic(err)
 	}
-	s4 := time.Now().UnixMilli() - cost
+	// s4 := time.Now().UnixMilli() - cost
 	if t.Value == TOMBSTONE {
 		return "", false
 	}
-	log.Debug().Msgf("Cost of finding a value: preprocess %v mem %v index %v seg %v", s1, s2, s3, s4)
+	// log.Info().Msgf("Cost of finding a value: preprocess %v mem %v index %v seg %v", s1, s2, s3, s4)
 	return t.Value, true
 }
 

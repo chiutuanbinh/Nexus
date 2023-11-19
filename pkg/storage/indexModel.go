@@ -6,7 +6,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"math"
 	"os"
+	"regexp"
+	"strconv"
 
 	"github.com/rs/zerolog/log"
 )
@@ -20,6 +23,31 @@ type IndexFileModelConfig struct {
 type IndexFileModel struct {
 	Config    *IndexFileModelConfig
 	LastIndex int
+}
+
+func CreateIndexFileModel(config *IndexFileModelConfig) *IndexFileModel {
+	indexFileNameRegex := fmt.Sprintf(`%s_(.*).index`, config.FilePrefix)
+	r := regexp.MustCompile(indexFileNameRegex)
+	dirEntries, err := os.ReadDir(config.Directory)
+	if err != nil {
+		panic(err)
+	}
+	var lastIndex = 0.0
+	for _, entry := range dirEntries {
+		match := r.FindStringSubmatch(entry.Name())
+		if len(match) > 0 {
+			indexFileIndex, err := strconv.Atoi(match[1])
+			if err != nil {
+				panic(err)
+			}
+			lastIndex = math.Max(float64(indexFileIndex), float64(lastIndex))
+		}
+
+	}
+
+	return &IndexFileModel{
+		Config:    config,
+		LastIndex: int(lastIndex)}
 }
 
 func (i *IndexFileModel) Flush(tuples []Tuple) error {
@@ -58,13 +86,26 @@ func (i *IndexFileModel) getIndexPath(nextIndex int) string {
 
 func (i *IndexFileModel) Find(key []byte) (int, int) {
 	for index := i.LastIndex; index > 0; index-- {
+
 		f, err := os.Open(i.getIndexPath(index))
 		if err != nil {
 			panic(fmt.Sprintf("Index file %v not found", i.getIndexPath(index)))
 		}
 		defer f.Close()
+		// TODO: Make this Binary search
+		stat, err := f.Stat()
+		if err != nil {
+			panic(err)
+		}
+		fileSize := stat.Size()
+		leftPos, rightPos := int64(0), fileSize/(KEY_SIZE_IN_BYTE+POSITION_OFFSET_SIZE_IN_BYTE)
 
 		for {
+			pos := (leftPos + rightPos) / 2 * (KEY_SIZE_IN_BYTE + POSITION_OFFSET_SIZE_IN_BYTE)
+			_, err = f.Seek(pos, 0)
+			if err != nil {
+				panic(err)
+			}
 			keyBuf := make([]byte, KEY_SIZE_IN_BYTE)
 			_, err = f.Read(keyBuf)
 			if err == io.EOF {
@@ -84,6 +125,15 @@ func (i *IndexFileModel) Find(key []byte) (int, int) {
 			}
 			if bytes.Equal(key, keyBuf) {
 				return index, int(binary.LittleEndian.Uint64(posBuf))
+			}
+			if string(keyBuf) > string(key) {
+				rightPos = (leftPos + rightPos) / 2
+			} else {
+				leftPos = (leftPos+rightPos)/2 + 1
+			}
+			// log.Info().Msgf("L %v R %v kb %v k %v  smaller %v i %v", leftPos, rightPos, string(keyBuf[:8]), string(key[:8]), string(keyBuf) < string(key), index)
+			if leftPos >= rightPos {
+				break
 			}
 
 		}

@@ -5,7 +5,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"math"
 	"os"
+	"regexp"
+	"strconv"
 
 	"github.com/rs/zerolog/log"
 )
@@ -20,8 +23,33 @@ type SegmentFileModel struct {
 	LastSegmentIndex int
 }
 
-func NewSegmentFileModel() *SegmentFileModel {
-	return nil
+func CreateSegmentFileModel(config *SegmentFileModelConfig) *SegmentFileModel {
+	segmentFileNameRegex := fmt.Sprintf(`%s_(\d*).seg`, config.FilePrefix)
+
+	r := regexp.MustCompile(segmentFileNameRegex)
+	dirEntries, err := os.ReadDir(config.Directory)
+	if err != nil {
+		panic(err)
+	}
+	var lastIndex = 0.0
+	for _, entry := range dirEntries {
+
+		match := r.FindStringSubmatch(entry.Name())
+		// log.Debug().Msgf("reg %v v %v %v", segmentFileNameRegex, entry.Name(), len(match))
+		if len(match) > 0 {
+			segmentFileIndex, err := strconv.Atoi(match[1])
+			if err != nil {
+				panic(err)
+			}
+			lastIndex = math.Max(float64(segmentFileIndex), float64(lastIndex))
+		}
+
+	}
+
+	return &SegmentFileModel{
+		Config:           config,
+		LastSegmentIndex: int(lastIndex),
+	}
 }
 
 func (s *SegmentFileModel) getNextSegmentPath() string {

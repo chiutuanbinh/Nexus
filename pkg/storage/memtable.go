@@ -8,11 +8,12 @@ import (
 )
 
 type Node struct {
-	Key    string
-	Value  string
-	Left   *Node
-	Right  *Node
-	Parent *Node
+	Key           string
+	Value         string
+	Left          *Node
+	Right         *Node
+	Parent        *Node
+	BalanceFactor int8
 }
 
 type Memtable interface {
@@ -31,6 +32,7 @@ type AVLTree struct {
 }
 
 func (t *AVLTree) Insert(key string, value string) error {
+	// log.Info().Msgf("Tree height %v", t.Height())
 	t.size += len(key) + len(value)
 	if t.Root == nil {
 		t.Root = &Node{
@@ -215,30 +217,43 @@ func (n *Node) Height() int {
 }
 
 func (t *AVLTree) rebalance(node *Node) {
+
 	rn := node
 	var child *Node = nil
 	var grandChild *Node = nil
-	var skewLeft, skewRight bool
-	for rn != nil {
-		skewLeft = rn.skewLeft()
-		skewRight = rn.skewRight()
-		if skewLeft || skewRight {
+	var change = true
+	for {
+		if rn.Parent == nil {
 			break
+		}
+
+		if rn == rn.Parent.Right {
+			rn.Parent.BalanceFactor += 1
+			if rn.Parent.BalanceFactor == 0 {
+				change = false
+			}
+		} else {
+			rn.Parent.BalanceFactor -= 1
+			if rn.Parent.BalanceFactor == 0 {
+				change = false
+			}
 		}
 		grandChild = child
 		child = rn
 		rn = rn.Parent
-
+		if rn == nil {
+			return
+		}
+		if rn.skewLeft() || rn.skewRight() || !change {
+			break
+		}
 	}
 
-	if rn == nil { //we reach root and tree is balance
-		return
-	}
-
-	if skewRight {
+	if rn.skewRight() {
 		//child should be rn right
-		if grandChild == child.Right {
-			rn.Left = &Node{Key: rn.Key, Value: rn.Value, Left: rn.Left, Right: child.Left, Parent: rn}
+		if grandChild == child.Right { //right right
+
+			rn.Left = &Node{Key: rn.Key, Value: rn.Value, Left: rn.Left, Right: child.Left, Parent: rn, BalanceFactor: 0}
 			if child.Left != nil {
 				child.Left.Parent = rn.Left
 			}
@@ -249,11 +264,11 @@ func (t *AVLTree) rebalance(node *Node) {
 			rn.Key = child.Key
 			rn.Value = child.Value
 			rn.setRight((child.Right))
-
+			rn.BalanceFactor = 0
 			child.Left = nil
 
-		} else {
-			rn.Left = &Node{Key: rn.Key, Value: rn.Value, Left: rn.Left, Right: grandChild.Left, Parent: rn}
+		} else { //right left
+			rn.Left = &Node{Key: rn.Key, Value: rn.Value, Left: rn.Left, Right: grandChild.Left, Parent: rn, BalanceFactor: 0}
 			if grandChild.Left != nil {
 				grandChild.Left.Parent = rn.Left
 			}
@@ -264,15 +279,15 @@ func (t *AVLTree) rebalance(node *Node) {
 			rn.Value = grandChild.Value
 			rn.Key = grandChild.Key
 			child.setLeft(grandChild.Right)
-
+			rn.BalanceFactor = 0
 			grandChild.Left = nil
 			grandChild.Right = nil
 
 		}
-	} else if skewLeft {
+	} else if rn.skewLeft() {
 		//child should be rn Left
-		if grandChild == child.Left {
-			rn.Right = &Node{Key: rn.Key, Value: rn.Value, Left: child.Right, Right: rn.Right, Parent: rn}
+		if grandChild == child.Left { //left right
+			rn.Right = &Node{Key: rn.Key, Value: rn.Value, Left: child.Right, Right: rn.Right, Parent: rn, BalanceFactor: 0}
 			if child.Right != nil {
 				child.Right.Parent = rn.Right
 			}
@@ -284,11 +299,11 @@ func (t *AVLTree) rebalance(node *Node) {
 			rn.Key = child.Key
 			rn.Value = child.Value
 			rn.setLeft(child.Left)
-
+			rn.BalanceFactor = 0
 			child.Right = nil
 
-		} else {
-			rn.Right = &Node{Key: rn.Key, Value: rn.Value, Left: grandChild.Right, Right: rn.Right, Parent: rn}
+		} else { //right left
+			rn.Right = &Node{Key: rn.Key, Value: rn.Value, Left: grandChild.Right, Right: rn.Right, Parent: rn, BalanceFactor: 0}
 			if grandChild.Right != nil {
 				grandChild.Right.Parent = rn.Right
 			}
@@ -299,7 +314,7 @@ func (t *AVLTree) rebalance(node *Node) {
 			rn.Value = grandChild.Value
 			rn.Key = grandChild.Key
 			child.setRight(grandChild.Left)
-
+			rn.BalanceFactor = 0
 			grandChild.Left = nil
 			grandChild.Right = nil
 
@@ -308,11 +323,11 @@ func (t *AVLTree) rebalance(node *Node) {
 }
 
 func (n *Node) skewRight() bool {
-	return n.Right.Height()-n.Left.Height() >= 2
+	return n.BalanceFactor == 2
 }
 
 func (n *Node) skewLeft() bool {
-	return n.Left.Height()-n.Right.Height() >= 2
+	return n.BalanceFactor == -2
 }
 
 func (n *Node) leftMostDescendant() *Node {

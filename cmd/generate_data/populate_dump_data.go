@@ -16,10 +16,10 @@ func printAllEntry(s storage.Storage) {
 	for i := 1; i < 100000; i++ {
 		key := strconv.Itoa(i)
 		start := time.Now().UnixMilli()
-		_, found := s.Get(key)
+		v, found := s.Get(key)
 		cost += time.Now().UnixMilli() - start
 		//we expect to find everything
-		// log.Info().Bool("found", found).Str("v", v).Str("K", key).Msg("")
+		log.Info().Bool("found", found).Str("v", v).Str("K", key).Msg("")
 		if !found {
 			lost += 1
 		}
@@ -31,20 +31,22 @@ func printAllEntry(s storage.Storage) {
 }
 
 func main() {
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	s := storage.CreateStorage(&storage.StorageConfig{
 		SSTableConfig: storage.SSTableConfig{
 			Directory:        "/Users/bchiu/workspace/private/Nexus/data",
 			FilePrefix:       "Nexus",
 			SegmentThreshold: 1000000,
 			MemtableMaxSize:  1000000,
-			UseHash:          true,
+			UseHash:          false,
 		},
 	})
 
 	for i := 0; i < 100000; i++ {
 		key := strconv.Itoa(i)
+		x := time.Now().UnixMilli()
 		err := s.Put(key, uuid.NewString())
+		log.Info().Msgf("I time %v %v ", time.Now().UnixMilli()-x, i)
 		if err != nil {
 			panic(err)
 		}
