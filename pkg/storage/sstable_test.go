@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	"math"
+	"nexus/pkg/common"
 
 	"testing"
 
@@ -12,7 +13,7 @@ import (
 
 func TestPrintSegment(t *testing.T) {
 	sstable := NewSSTable(&SSTableConfig{Directory: ".", FilePrefix: "A", MemtableMaxSize: 200}, func() error { return nil })
-	sampleInput := []Tuple{
+	sampleInput := []common.Tuple{
 		{Key: "A", Value: "B"},
 		{Key: "B", Value: "c"},
 		{Key: "C", Value: "B"},
@@ -40,7 +41,7 @@ func TestPrintSegment(t *testing.T) {
 
 func TestFind(t *testing.T) {
 	sstable := NewSSTable(&SSTableConfig{Directory: ".", FilePrefix: "A", MemtableMaxSize: math.MaxInt32, UseHash: true}, func() error { return nil })
-	sampleInput := []Tuple{
+	sampleInput := []common.Tuple{
 		{Key: "A", Value: "B"},
 		{Key: "B", Value: "c"},
 		{Key: "C", Value: "B"},

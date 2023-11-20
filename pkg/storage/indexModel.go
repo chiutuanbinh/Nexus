@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"nexus/pkg/common"
 	"os"
 	"regexp"
 	"strconv"
@@ -50,7 +51,7 @@ func CreateIndexFileModel(config *IndexFileModelConfig) *IndexFileModel {
 		LastIndex: int(lastIndex)}
 }
 
-func (i *IndexFileModel) Flush(tuples []Tuple) error {
+func (i *IndexFileModel) Flush(tuples []common.Tuple) error {
 	f, err := os.Create(i.getNextIndexPath())
 	if err != nil {
 		return err

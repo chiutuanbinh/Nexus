@@ -3,7 +3,8 @@ package storage
 import (
 	"encoding/hex"
 	"fmt"
-	"nexus/pkg/hashing"
+	"nexus/pkg/hash"
+	"nexus/pkg/tree"
 )
 
 type SSTableConfig struct {
@@ -19,12 +20,12 @@ type SSTable struct {
 	segmentModel  *SegmentFileModel
 	indexModel    *IndexFileModel
 	memtable      Memtable
-	hasher        hashing.Hasher
+	hasher        hash.Hasher
 	flushCallBack func() error
 }
 
 func NewSSTable(config *SSTableConfig, flushCallBack func() error) *SSTable {
-	var hasher hashing.Hasher = &hashing.MD5Hasher{}
+	var hasher hash.Hasher = &hash.MD5Hasher{}
 
 	sstable := &SSTable{
 		Config: config,
@@ -41,7 +42,7 @@ func NewSSTable(config *SSTableConfig, flushCallBack func() error) *SSTable {
 			},
 		),
 		hasher:        hasher,
-		memtable:      &AVLTree{},
+		memtable:      &tree.AVLTree{},
 		flushCallBack: flushCallBack,
 	}
 

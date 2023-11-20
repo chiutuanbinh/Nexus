@@ -2,6 +2,8 @@ package storage
 
 import (
 	"log"
+	"nexus/pkg/common"
+	"nexus/pkg/tree"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,7 +11,7 @@ import (
 
 func TestAVLInsert(t *testing.T) {
 
-	sampleInput := []Tuple{
+	sampleInput := []common.Tuple{
 		{Key: "A", Value: "B"},
 		{Key: "B", Value: "c"},
 		{Key: "C", Value: "B"},
@@ -18,7 +20,7 @@ func TestAVLInsert(t *testing.T) {
 		{Key: "F", Value: "1"},
 	}
 
-	tree := AVLTree{}
+	tree := tree.AVLTree{}
 	for i := range sampleInput {
 		tree.Insert(sampleInput[i].Key, sampleInput[i].Value)
 		log.Println(tree.Root.ToString())
@@ -27,7 +29,7 @@ func TestAVLInsert(t *testing.T) {
 }
 
 func TestAVLDelete(t *testing.T) {
-	sampleInput := []Tuple{
+	sampleInput := []common.Tuple{
 		{Key: "A", Value: "B"},
 		{Key: "B", Value: "c"},
 		{Key: "C", Value: "B"},
@@ -36,7 +38,7 @@ func TestAVLDelete(t *testing.T) {
 		{Key: "F", Value: "1"},
 	}
 
-	tree := AVLTree{}
+	tree := tree.AVLTree{}
 	var err error
 	for i := range sampleInput {
 		err = tree.Insert(sampleInput[i].Key, sampleInput[i].Value)
@@ -63,7 +65,7 @@ func TestAVLDelete(t *testing.T) {
 
 func TestAVLFind(t *testing.T) {
 
-	sampleInput := []Tuple{
+	sampleInput := []common.Tuple{
 		{Key: "A", Value: "B"},
 		{Key: "B", Value: "c"},
 		{Key: "C", Value: "B"},
@@ -72,7 +74,7 @@ func TestAVLFind(t *testing.T) {
 		{Key: "F", Value: "1"},
 	}
 
-	tree := AVLTree{}
+	tree := tree.AVLTree{}
 	for i := range sampleInput {
 		tree.Insert(sampleInput[i].Key, sampleInput[i].Value)
 	}

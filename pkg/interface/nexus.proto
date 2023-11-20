@@ -8,8 +8,16 @@ service Nexus {
     rpc Put(PutRequest) returns (PutResponse) {}
     rpc Delete(DeleteRequest) returns (DeleteResponse) {}
 
+    
+}
+
+service NexusManagement {
     //Management
     rpc Flush(FlushRequest) returns (FlushResponse) {}
+    rpc Compact(CompactRequest) returns(CompactResponse){}
+
+    //Distribution
+    
 }
 
 message GetRequest {
@@ -45,4 +53,9 @@ message FlushRequest {
 
 message FlushResponse {
     int32 err = 1;
+}
+
+message CompactRequest {
+}
+message CompactResponse {
 }

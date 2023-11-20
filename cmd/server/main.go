@@ -40,7 +40,7 @@ func runServer() {
 		fmt.Println(err)
 		panic("yo port is taken")
 	}
-	log.Print("NExUS is listening on port 5555")
+	log.Info().Msg("NExUS is listening on port 5555")
 	err = grpcServer.Serve(lis)
 	if err != nil {
 		panic(err)

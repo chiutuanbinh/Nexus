@@ -1,14 +1,9 @@
-package hashing
+package hash
 
 import (
 	"crypto/md5"
 	"encoding/hex"
 )
-
-type Hasher interface {
-	Hash(in string) string
-	GetHashSize() int
-}
 
 type MD5Hasher struct {
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"nexus/pkg/common"
 	"os"
 	"regexp"
 	"strconv"
@@ -99,7 +100,7 @@ func readNextValue(f *os.File, sizeBufMaxBit int) (string, error) {
 	return string(dataBuf[:]), nil
 }
 
-func (s *SegmentFileModel) Flush(tuples []Tuple) error {
+func (s *SegmentFileModel) Flush(tuples []common.Tuple) error {
 	f, err := os.Create(s.getNextSegmentPath())
 	if err != nil {
 		return err
@@ -131,7 +132,7 @@ func (s *SegmentFileModel) Flush(tuples []Tuple) error {
 	return nil
 }
 
-func (s *SegmentFileModel) Get(fileIndex int, pos int) (Tuple, error) {
+func (s *SegmentFileModel) Get(fileIndex int, pos int) (common.Tuple, error) {
 	f, err := os.Open(s.getSegmentPath(fileIndex))
 	if err != nil {
 		panic(fmt.Sprintf("Segment file %v not found", s.getSegmentPath(fileIndex)))
@@ -169,5 +170,5 @@ func (s *SegmentFileModel) Get(fileIndex int, pos int) (Tuple, error) {
 		panic(err)
 	}
 	value := string(valueArr)
-	return Tuple{Key: key, Value: value}, nil
+	return common.Tuple{Key: key, Value: value}, nil
 }
