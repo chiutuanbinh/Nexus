@@ -3,7 +3,6 @@ package storage
 import (
 	"fmt"
 	"math"
-	"nexus/pkg/common"
 
 	"testing"
 
@@ -11,37 +10,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPrintSegment(t *testing.T) {
-	sstable := NewSSTable(&SSTableConfig{Directory: ".", FilePrefix: "A", MemtableMaxSize: 200}, func() error { return nil })
-	sampleInput := []common.Tuple{
-		{Key: "A", Value: "B"},
-		{Key: "B", Value: "c"},
-		{Key: "C", Value: "B"},
-		{Key: "D", Value: "1"},
-		{Key: "E", Value: "1"},
-		{Key: "F", Value: "1"},
-		{Key: "G", Value: "B"},
-		{Key: "H", Value: "1"},
-		{Key: "I", Value: "1"},
-		{Key: "J", Value: "1"},
-	}
-	for i := range sampleInput {
-		err := sstable.Insert(sampleInput[i].Key, sampleInput[i].Value)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	err := sstable.segmentModel.PrintSegment(1)
-	if err != nil {
-		panic(err)
-	}
-
+type T struct {
+	Key   string
+	Value string
 }
 
 func TestFind(t *testing.T) {
 	sstable := NewSSTable(&SSTableConfig{Directory: ".", FilePrefix: "A", MemtableMaxSize: math.MaxInt32, UseHash: true}, func() error { return nil })
-	sampleInput := []common.Tuple{
+	sampleInput := []T{
 		{Key: "A", Value: "B"},
 		{Key: "B", Value: "c"},
 		{Key: "C", Value: "B"},

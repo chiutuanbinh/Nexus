@@ -1,30 +1,103 @@
-package tree
+package common
 
 import (
+	"bytes"
 	"math"
-	"nexus/pkg/common"
 	"strings"
 
 	"github.com/rs/zerolog/log"
 )
 
 type Node struct {
-	Key           string
-	Value         string
+	Key           []byte
+	Value         []byte
 	Left          *Node
 	Right         *Node
 	Parent        *Node
 	BalanceFactor int8
 }
 
-type AVLTree struct {
-	Root *Node
-	size int
+type AVLTree interface {
+	Insert(key []byte, value []byte) error
+	Delete(key []byte) error
+	Find(key []byte) ([]byte, error)
+	LowerBound(key []byte) ([]byte, []byte, error)
+	UpperBound(key []byte) ([]byte, []byte, error)
+	Clear() error
+	Size() int
+	List() []Tuple
+	NodeCount() int
 }
 
-func (t *AVLTree) Insert(key string, value string) error {
+func CreateAVLTree() AVLTree {
+	return &avlTreeImpl{}
+
+}
+
+type avlTreeImpl struct {
+	Root      *Node
+	size      int
+	nodeCount int
+}
+
+// LowerBound return the node with smallest key that equal or larger than key
+func (t *avlTreeImpl) LowerBound(key []byte) ([]byte, []byte, error) {
+	node := t.Root
+	var k []byte = nil
+	var v []byte = nil
+	for {
+		if node == nil {
+			return k, v, nil
+		}
+		if bytes.Equal(key, node.Key) {
+			return node.Key, node.Value, nil
+		} else if bytes.Compare(key, node.Key) == 1 {
+			node = node.Right
+		} else {
+			if k == nil {
+				k = node.Key
+				v = node.Value
+			} else {
+				if bytes.Compare(k, node.Key) == 1 {
+					k = node.Key
+					v = node.Value
+				}
+			}
+			node = node.Left
+		}
+	}
+
+}
+
+// UpperBound return the node with smallest key that larger than key
+func (t *avlTreeImpl) UpperBound(key []byte) ([]byte, []byte, error) {
+	node := t.Root
+	var k []byte = nil
+	var v []byte = nil
+	for {
+		if node == nil || bytes.Equal(key, node.Key) {
+			return k, v, nil
+		} else if bytes.Compare(key, node.Key) == 1 {
+			node = node.Right
+		} else {
+			if k == nil {
+				k = node.Key
+				v = node.Value
+			} else {
+				if bytes.Compare(k, node.Key) == 1 {
+					k = node.Key
+					v = node.Value
+				}
+			}
+			node = node.Left
+		}
+	}
+}
+
+func (t *avlTreeImpl) Insert(key []byte, value []byte) error {
 	// log.Info().Msgf("Tree height %v", t.Height())
 	t.size += len(key) + len(value)
+	t.nodeCount += 1
 	if t.Root == nil {
 		t.Root = &Node{
 			Key:   key,
@@ -38,12 +111,12 @@ func (t *AVLTree) Insert(key string, value string) error {
 		if node == nil {
 			return nil
 		}
-		if key == node.Key {
+		if bytes.Equal(key, node.Key) {
 			node.Key = key
 			node.Value = value
 			return nil
 		}
-		if key < node.Key {
+		if bytes.Compare(key, node.Key) == -1 {
 			if node.Left != nil {
 				node = node.Left
 			} else {
@@ -65,24 +138,25 @@ func (t *AVLTree) Insert(key string, value string) error {
 	}
 }
 
-func (t *AVLTree) Delete(key string) (bool, error) {
+func (t *avlTreeImpl) Delete(key []byte) error {
 	node := t.Root
 	for {
 		if node == nil {
-			return false, nil
+			return NotFoundError{Value: string(key)}
 		}
-		if key == node.Key {
+		if bytes.Equal(key, node.Key) {
 			t.size -= len(node.Key) + len(node.Value)
+			t.nodeCount -= 1
 			if node == t.Root {
 				if node.Left == nil {
 					t.Root = node.Right
 					t.Root.Parent = nil
-					return true, nil
+					return nil
 				}
 				if node.Right == nil {
 					t.Root = node.Left
 					t.Root.Parent = nil
-					return true, nil
+					return nil
 				}
 
 			} else {
@@ -94,7 +168,7 @@ func (t *AVLTree) Delete(key string) (bool, error) {
 						parent.setRight(node.Right)
 					}
 					t.rebalance(parent)
-					return true, nil
+					return nil
 				}
 				if node.Right == nil {
 					if node == parent.Right {
@@ -103,7 +177,7 @@ func (t *AVLTree) Delete(key string) (bool, error) {
 						parent.Left = node.Left
 					}
 					t.rebalance(parent)
-					return true, nil
+					return nil
 				}
 			}
 
@@ -120,9 +194,9 @@ func (t *AVLTree) Delete(key string) (bool, error) {
 
 			}
 			t.rebalance(cp)
-			return true, nil
+			return nil
 		}
-		if key < node.Key {
+		if bytes.Compare(key, node.Key) == -1 {
 			node = node.Left
 		} else {
 			node = node.Right
@@ -130,48 +204,52 @@ func (t *AVLTree) Delete(key string) (bool, error) {
 	}
 }
 
-func (t *AVLTree) Find(key string) (string, bool) {
+func (t *avlTreeImpl) Find(key []byte) ([]byte, error) {
 	node := t.Root
 	for {
 		if node == nil {
-			return "", false
+			return nil, NotFoundError{Value: string(key)}
 		}
-		if key < node.Key {
+		if bytes.Compare(key, node.Key) == -1 {
 			node = node.Left
-		} else if key > node.Key {
+		} else if bytes.Compare(key, node.Key) == 1 {
 			node = node.Right
 		} else {
-			return node.Value, true
+			return node.Value, nil
 		}
 	}
 }
 
-func (t *AVLTree) Clear() error {
+func (t *avlTreeImpl) Clear() error {
 	log.Debug().Msg("AVL clear")
 	t.Root = nil
 	t.size = 0
 	return nil
 }
 
-func (t *AVLTree) Size() int {
+func (t *avlTreeImpl) Size() int {
 	return t.size
 }
 
-func (t *AVLTree) List() []common.Tuple {
+func (t *avlTreeImpl) NodeCount() int {
+	return t.nodeCount
+}
+
+func (t *avlTreeImpl) List() []Tuple {
 	return t.Inorder()
 }
 
-func (t *AVLTree) Inorder() []common.Tuple {
+func (t *avlTreeImpl) Inorder() []Tuple {
 	return t.Root.Inorder()
 }
 
-func (n *Node) Inorder() []common.Tuple {
+func (n *Node) Inorder() []Tuple {
 	if n == nil {
-		return make([]common.Tuple, 0)
+		return make([]Tuple, 0)
 	}
-	res := make([]common.Tuple, 0)
+	res := make([]Tuple, 0)
 	res = append(res, n.Left.Inorder()...)
-	res = append(res, common.Tuple{Key: n.Key, Value: n.Value})
+	res = append(res, Tuple{Key: n.Key, Value: n.Value})
 	res = append(res, n.Right.Inorder()...)
 	return res
 }
@@ -181,9 +259,9 @@ func (n *Node) ToString() string {
 		return "nil"
 	}
 	var sb strings.Builder
-	sb.WriteString(n.Key)
+	sb.WriteString(string(n.Key))
 	if n.Parent != nil {
-		sb.WriteString(":" + "{" + n.Parent.Key + "}")
+		sb.WriteString(":" + "{" + string(n.Parent.Key) + "}")
 	} else {
 		sb.WriteString(":ROOT")
 	}
@@ -191,7 +269,7 @@ func (n *Node) ToString() string {
 	return sb.String()
 }
 
-func (t *AVLTree) Height() int {
+func (t *avlTreeImpl) Height() int {
 	return t.Root.Height()
 }
 
@@ -202,7 +280,7 @@ func (n *Node) Height() int {
 	return 1 + int(math.Max(float64(n.Left.Height()), float64(n.Right.Height())))
 }
 
-func (t *AVLTree) rebalance(node *Node) {
+func (t *avlTreeImpl) rebalance(node *Node) {
 
 	rn := node
 	var child *Node = nil

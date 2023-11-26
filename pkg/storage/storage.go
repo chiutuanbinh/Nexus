@@ -11,13 +11,15 @@ type storageImplementation struct {
 	sstable      *SSTable
 }
 
+var _ Storage = &storageImplementation{}
+
 type StorageConfig struct {
 	SSTableConfig
 }
 
 // Delete implements Storage.
 func (s *storageImplementation) Delete(key string) error {
-	err := s.commitLogger.Write([]byte(key), []byte(TOMBSTONE))
+	err := s.commitLogger.Write([]byte(key), []byte(getTombStone()))
 	if err != nil {
 		return err
 	}

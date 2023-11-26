@@ -9,4 +9,6 @@ const POSITION_OFFSET_SIZE_IN_BYTE = 16
 
 const EMPTY_STRING = ""
 
-const TOMBSTONE = "\\0"
+func getTombStone() []byte {
+	return []byte{0}
+}

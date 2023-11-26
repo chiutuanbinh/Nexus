@@ -2,7 +2,6 @@ package storage
 
 import (
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"math"
@@ -85,19 +84,19 @@ func (s *SegmentFileModel) PrintSegment(segmentIndex int) error {
 	}
 }
 
-func readNextValue(f *os.File, sizeBufMaxBit int) (string, error) {
+func readNextValue(f *os.File, sizeBufMaxBit int) ([]byte, error) {
 	sizeBuf := make([]byte, sizeBufMaxBit)
 	_, err := f.Read(sizeBuf)
 	if err == io.EOF {
-		return "", err
+		return []byte{}, err
 	}
 	size := binary.LittleEndian.Uint64(sizeBuf)
 	dataBuf := make([]byte, size)
 	_, err = f.Read(dataBuf)
 	if err == io.EOF {
-		return "", err
+		return []byte{}, err
 	}
-	return string(dataBuf[:]), nil
+	return dataBuf[:], nil
 }
 
 func (s *SegmentFileModel) Flush(tuples []common.Tuple) error {
@@ -156,7 +155,6 @@ func (s *SegmentFileModel) Get(fileIndex int, pos int) (common.Tuple, error) {
 		panic(err)
 	}
 
-	key := hex.EncodeToString(keyByteArr)
 	valueSizeArr := make([]byte, VALUE_SIZE_MAX_BYTE_LENGTH)
 
 	_, err = f.Read(valueSizeArr)
@@ -169,6 +167,5 @@ func (s *SegmentFileModel) Get(fileIndex int, pos int) (common.Tuple, error) {
 	if err != nil {
 		panic(err)
 	}
-	value := string(valueArr)
-	return common.Tuple{Key: key, Value: value}, nil
+	return common.Tuple{Key: keyByteArr, Value: valueArr}, nil
 }

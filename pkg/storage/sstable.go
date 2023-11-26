@@ -1,10 +1,9 @@
 package storage
 
 import (
-	"encoding/hex"
+	"bytes"
 	"fmt"
-	"nexus/pkg/hash"
-	"nexus/pkg/tree"
+	"nexus/pkg/common"
 )
 
 type SSTableConfig struct {
@@ -20,12 +19,12 @@ type SSTable struct {
 	segmentModel  *SegmentFileModel
 	indexModel    *IndexFileModel
 	memtable      Memtable
-	hasher        hash.Hasher
+	hasher        common.Hasher
 	flushCallBack func() error
 }
 
 func NewSSTable(config *SSTableConfig, flushCallBack func() error) *SSTable {
-	var hasher hash.Hasher = &hash.MD5Hasher{}
+	hasher := &common.MD5Hasher{}
 
 	sstable := &SSTable{
 		Config: config,
@@ -42,7 +41,7 @@ func NewSSTable(config *SSTableConfig, flushCallBack func() error) *SSTable {
 			},
 		),
 		hasher:        hasher,
-		memtable:      &tree.AVLTree{},
+		memtable:      common.CreateAVLTree(),
 		flushCallBack: flushCallBack,
 	}
 
@@ -51,11 +50,7 @@ func NewSSTable(config *SSTableConfig, flushCallBack func() error) *SSTable {
 
 func (s *SSTable) preprocess(v string) ([]byte, error) {
 	if s.Config.UseHash {
-		hashedKey := s.hasher.Hash(v)
-		keyBytes, err := hex.DecodeString(hashedKey)
-		if err != nil {
-			return nil, err
-		}
+		keyBytes := s.hasher.Hash([]byte(v))
 		return keyBytes, nil
 	} else {
 		if len(v) > KEY_SIZE_IN_BYTE {
@@ -73,7 +68,7 @@ func (s *SSTable) Insert(key string, value string) error {
 	if err != nil {
 		return err
 	}
-	err = s.memtable.Insert(string(preprocessedKey), value)
+	err = s.memtable.Insert(preprocessedKey, []byte(value))
 	if err != nil {
 		return err
 	}
@@ -85,7 +80,7 @@ func (s *SSTable) Insert(key string, value string) error {
 }
 
 func (s *SSTable) Delete(key string) error {
-	return s.Insert(key, TOMBSTONE)
+	return s.Insert(key, string(getTombStone()))
 }
 
 func (s *SSTable) Find(key string) (string, bool) {
@@ -96,13 +91,13 @@ func (s *SSTable) Find(key string) (string, bool) {
 	}
 
 	// s1 := time.Now().UnixMilli() - cost
-	v, ok := s.memtable.Find(string(preprocessedKey))
+	v, err := s.memtable.Find(preprocessedKey)
 	// log.Debug().Msgf("Find key %v processed %v value %v", key, string(preprocessedKey), v)
-	if ok {
-		if v == TOMBSTONE {
+	if err == nil {
+		if bytes.Equal(v, getTombStone()) {
 			return "", false
 		}
-		return v, true
+		return string(v), true
 	}
 	// s2 := time.Now().UnixMilli() - cost
 	fileIndex, pos := s.indexModel.Find(preprocessedKey)
@@ -115,11 +110,11 @@ func (s *SSTable) Find(key string) (string, bool) {
 		panic(err)
 	}
 	// s4 := time.Now().UnixMilli() - cost
-	if t.Value == TOMBSTONE {
+	if bytes.Equal(t.Value, getTombStone()) {
 		return "", false
 	}
 	// log.Info().Msgf("Cost of finding a value: preprocess %v mem %v index %v seg %v", s1, s2, s3, s4)
-	return t.Value, true
+	return string(t.Value), true
 }
 
 func (s *SSTable) Flush() error {
