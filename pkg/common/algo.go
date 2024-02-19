@@ -10,5 +10,6 @@ func Modulo(numerator []byte, denominator int) int {
 		result += int((numerator[i] % byte(denominator)))
 		result %= denominator
 	}
+
 	return result
 }

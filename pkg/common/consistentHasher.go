@@ -18,7 +18,7 @@ func (*ConsistentHasher) GetHashSize() int {
 }
 
 // Hash implements Hasher.
-func (c *ConsistentHasher) FindNode(key []byte) (string, error) {
+func (c *ConsistentHasher) FindToken(key []byte) (string, error) {
 	md5Hash := md5.Sum(key)
 	ringPosition := uint64(Modulo(md5Hash[:], c.ringSize))
 	ringPositionArr := make([]byte, 8)
@@ -31,18 +31,18 @@ func (c *ConsistentHasher) FindNode(key []byte) (string, error) {
 	return string(nodeId), nil
 }
 
-func (c *ConsistentHasher) AddNode(nodeId string) error {
-	nodeIdHash := md5.Sum([]byte(nodeId))
+func (c *ConsistentHasher) AddToken(token string) error {
+	nodeIdHash := md5.Sum([]byte(token))
 	ringPosition := uint64(Modulo(nodeIdHash[:], c.ringSize))
 	ringPositionArr := make([]byte, 8)
 	binary.LittleEndian.PutUint64(ringPositionArr, ringPosition)
-	err := c.orderedMap.Put(ringPositionArr, []byte(nodeId))
+	err := c.orderedMap.Put(ringPositionArr, []byte(token))
 	return err
 }
 
-func (c *ConsistentHasher) DeleteNode(nodeId string) error {
-	nodeIdHash := md5.Sum([]byte(nodeId))
-	ringPosition := uint64(Modulo(nodeIdHash[:], c.ringSize))
+func (c *ConsistentHasher) DeleteToken(token string) error {
+	tokenHash := md5.Sum([]byte(token))
+	ringPosition := uint64(Modulo(tokenHash[:], c.ringSize))
 	ringPositionArr := make([]byte, 8)
 	binary.LittleEndian.PutUint64(ringPositionArr, ringPosition)
 	err := c.orderedMap.Delete(ringPositionArr)

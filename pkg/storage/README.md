@@ -30,11 +30,10 @@
 
 1. Disk flushing: based on size only
 
-- Did not handle program exit -> loss data
-
 2. Searching
 
-- Key is hashed then sorted. It may not work well with range query.
+- Key is hashed then sorted. It may not work well with range query. If you want to use range query, then set the sort option as false
 - Memtable first
 - Then using index files
   - Binary search the key, then using the pos to get the value from segment file
+- Does not load the value into memtable on search

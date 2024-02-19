@@ -17,7 +17,7 @@ service NexusManagement {
     rpc Compact(CompactRequest) returns(CompactResponse){}
 
     //Distribution
-    
+    rpc JoinCluster(JoinClusterRequest) returns(JoinClusterResponse) {}
 }
 
 message GetRequest {
@@ -58,4 +58,11 @@ message FlushResponse {
 message CompactRequest {
 }
 message CompactResponse {
+}
+
+message JoinClusterRequest {
+    
+}
+message JoinClusterResponse {
+
 }
