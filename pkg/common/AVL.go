@@ -17,19 +17,7 @@ type Node struct {
 	BalanceFactor int8
 }
 
-type AVLTree interface {
-	Insert(key []byte, value []byte) error
-	Delete(key []byte) error
-	Find(key []byte) ([]byte, error)
-	LowerBound(key []byte) ([]byte, []byte, error)
-	UpperBound(key []byte) ([]byte, []byte, error)
-	Clear() error
-	Size() int
-	List() []Tuple
-	NodeCount() int
-}
-
-func CreateAVLTree() AVLTree {
+func CreateAVLTree() BstTree {
 	return &avlTreeImpl{}
 
 }
